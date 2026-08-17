@@ -23,32 +23,68 @@ export const Topbar: React.FC<TopbarProps> = ({
   const isAuthorizedForTerminal = hasFinancialAccess(currentUser);
 
   let contextTitle = 'Dashboard';
-  if (pathname === '/hub') contextTitle = 'Central de Comando';
-  else if (pathname === '/areas') contextTitle = 'Áreas Operacionais';
-  else if (pathname?.startsWith('/areas/')) {
+  let shortTitle = 'Dashboard';
+
+  if (pathname === '/hub') {
+    contextTitle = 'Central de Comando';
+    shortTitle = 'Hub';
+  } else if (pathname === '/areas') {
+    contextTitle = 'Áreas Operacionais';
+    shortTitle = 'Áreas';
+  } else if (pathname?.startsWith('/areas/')) {
     const areaId = pathname.replace('/areas/', '');
     const foundArea = areas.find((a) => a.id === areaId);
     contextTitle = `Áreas / ${foundArea?.name || 'Detalhes'}`;
-  } else if (pathname === '/obligations') contextTitle = 'Obrigações';
-  else if (pathname === '/alerts') contextTitle = 'Central de Alertas';
-  else if (pathname === '/chat') contextTitle = 'Conversas Internas';
-  else if (pathname === '/financial') contextTitle = 'Dashboard Financeiro';
-  else if (pathname === '/terminal') contextTitle = 'Terminal Bloomberg';
-  else if (pathname === '/reports') contextTitle = 'Relatórios Executivos';
-  else if (pathname === '/admin/simulacao') contextTitle = 'Simulador Admin';
-  else if (pathname === '/settings') contextTitle = 'Configurações';
+    shortTitle = foundArea?.name || 'Área';
+  } else if (pathname === '/obligations') {
+    contextTitle = 'Obrigações & Rituais';
+    shortTitle = 'Rituais';
+  } else if (pathname === '/alerts') {
+    contextTitle = 'Central de Alertas';
+    shortTitle = 'Alertas';
+  } else if (pathname === '/chat') {
+    contextTitle = 'Conversas Internas';
+    shortTitle = 'Chat';
+  } else if (pathname === '/financial') {
+    contextTitle = 'Dashboard Financeiro';
+    shortTitle = 'Finanças';
+  } else if (pathname === '/terminal') {
+    contextTitle = 'Terminal Bloomberg';
+    shortTitle = 'Terminal';
+  } else if (pathname === '/reports') {
+    contextTitle = 'Relatórios Executivos';
+    shortTitle = 'Relatórios';
+  } else if (pathname === '/admin/simulacao') {
+    contextTitle = 'Simulador Admin';
+    shortTitle = 'Simulador';
+  } else if (pathname === '/settings') {
+    contextTitle = 'Configurações';
+    shortTitle = 'Ajustes';
+  }
 
   return (
-    <header className="h-12 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between sticky top-0 z-30 select-none font-sans">
-      {/* Left: Breadcrumbs & Mode Switcher */}
-      <div className="flex items-center space-x-3">
-        <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+    <header className="h-12 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between sticky top-0 z-30 select-none font-sans">
+      {/* Left: Brand & Titles (Adaptive for Mobile/Desktop) */}
+      <div className="flex items-center space-x-2.5 min-w-0">
+        {/* Mobile Brand Icon */}
+        <div className="md:hidden w-6 h-6 rounded bg-slate-800 border border-slate-700 text-sky-400 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+          NX
+        </div>
+
+        {/* Desktop Breadcrumbs */}
+        <span className="hidden md:inline-block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider truncate">
           Nexus Operations / {appMode === 'FINANCIAL_TERMINAL' ? 'Terminal Bloomberg' : contextTitle}
         </span>
-        <span className="hidden md:inline-block text-slate-700">|</span>
 
-        {/* Dual Mode Application Toggle Button */}
-        <div className="flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 text-xs font-mono font-medium">
+        {/* Mobile Short Title */}
+        <span className="md:hidden text-xs font-bold text-slate-100 uppercase tracking-wider font-mono truncate">
+          {shortTitle}
+        </span>
+
+        <span className="hidden lg:inline-block text-slate-700">|</span>
+
+        {/* Desktop Dual Mode Switcher Button (Hidden on Mobile) */}
+        <div className="hidden lg:flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 text-xs font-mono font-medium">
           <button
             onClick={() => setAppMode('OPERATIONS')}
             className={`px-2.5 py-0.5 rounded transition-colors flex items-center space-x-1.5 cursor-pointer ${
@@ -63,7 +99,7 @@ export const Topbar: React.FC<TopbarProps> = ({
 
           <button
             onClick={() => setAppMode('FINANCIAL_TERMINAL')}
-            className={`px-2.5 py-0.5 rounded transition-colors flex items-center space-x-1.5 ${
+            className={`px-2.5 py-0.5 rounded transition-colors flex items-center space-x-1.5 cursor-pointer ${
               appMode === 'FINANCIAL_TERMINAL'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -79,23 +115,26 @@ export const Topbar: React.FC<TopbarProps> = ({
       </div>
 
       {/* Right: Actions & User Dropdown */}
-      <div className="flex items-center space-x-2.5">
+      <div className="flex items-center space-x-2 shrink-0">
+        {/* Desktop-only Quick Closing Button (On mobile, it is in Bottom Nav) */}
         <button
           onClick={onOpenClosingModal}
-          className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs px-3 py-1 rounded border border-slate-700 transition-colors"
+          className="hidden sm:flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs px-2.5 py-1 rounded border border-slate-700 transition-colors cursor-pointer"
         >
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Registrar Fechamento</span>
+          <span>Fechamento</span>
         </button>
 
+        {/* Notifications Icon Button */}
         <button
           onClick={onToggleNotificationDrawer}
-          className="relative p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
+          className="relative p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           title="Notificações"
+          aria-label="Notificações"
         >
-          <Bell className="w-3.5 h-3.5" />
+          <Bell className="w-4 h-4" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-rose-500 rounded-full" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full" />
           )}
         </button>
 
@@ -103,10 +142,10 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center space-x-2 bg-slate-950 px-2 py-1 rounded border border-slate-800 text-xs text-slate-300 transition-colors hover:bg-slate-800"
+            className="flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 text-xs text-slate-300 transition-colors hover:bg-slate-800 cursor-pointer"
           >
             <UserAvatar name={currentUser.name} size="sm" />
-            <span className="font-medium text-xs hidden sm:inline">{currentUser.name}</span>
+            <span className="font-medium text-xs hidden md:inline truncate max-w-[100px]">{currentUser.name}</span>
             <span className="px-1 py-0.2 text-[9px] font-mono font-semibold bg-slate-800 text-slate-400 rounded">
               {currentUser.role}
             </span>
@@ -114,13 +153,13 @@ export const Topbar: React.FC<TopbarProps> = ({
           </button>
 
           {showUserDropdown && (
-            <div className="absolute right-0 mt-1 w-56 bg-slate-900 border border-slate-800 rounded shadow-xl py-1 z-50">
-              <div className="px-3 py-1 border-b border-slate-800">
+            <div className="absolute right-0 mt-1.5 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-1.5 border-b border-slate-800">
                 <p className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                   Simular Perfil RLS
                 </p>
               </div>
-              <div className="max-h-52 overflow-y-auto py-0.5">
+              <div className="max-h-56 overflow-y-auto py-0.5 divide-y divide-slate-800/40">
                 {profiles.map((p) => (
                   <button
                     key={p.id}
@@ -128,7 +167,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                       switchUser(p.id);
                       setShowUserDropdown(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between text-xs hover:bg-slate-800 transition-colors ${
+                    className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs hover:bg-slate-800 transition-colors cursor-pointer ${
                       p.id === currentUser.id ? 'bg-slate-800 text-slate-100 font-bold' : 'text-slate-300'
                     }`}
                   >
@@ -136,7 +175,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                       <p className="truncate font-medium text-xs">{p.name}</p>
                       <p className="text-[9px] font-mono text-slate-500 truncate">{p.department}</p>
                     </div>
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-slate-950 text-slate-400 font-mono">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-950 text-slate-400 font-mono shrink-0">
                       {p.role}
                     </span>
                   </button>

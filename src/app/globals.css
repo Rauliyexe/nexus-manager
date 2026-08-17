@@ -1,15 +1,26 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
+  html, body {
     @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
+}
+
+/* Safe Area Insets for iOS Notch and Home Indicator */
+.safe-area-pb {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.safe-area-pt {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
 /* Custom scrollbar for dark enterprise look */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -23,4 +34,21 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 1);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* PWA Standalone Mode Optimizations */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
 }
