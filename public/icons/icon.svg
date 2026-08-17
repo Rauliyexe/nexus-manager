@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#000000" />
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Shield Rounded Square -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#1e293b" stroke-width="6" />
+
+  <!-- Outer Tech Circle Ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#334155" stroke-width="4" stroke-dasharray="16 12" />
+  
+  <!-- Subtle Glow Layer -->
+  <path d="M140 370 L140 142 L230 142 L372 370 L372 142" fill="none" stroke="#0284c7" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" filter="url(#glow)" />
+
+  <!-- Main Geometric 'N' & 'X' Fusion Symbol -->
+  <path d="M140 370 L140 142 L225 142 L372 370 L372 142" fill="none" stroke="url(#cyanGrad)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Central Pulse Diamond Node -->
+  <polygon points="256,220 290,256 256,292 222,256" fill="url(#emeraldGrad)" filter="url(#glow)" />
+  <circle cx="256" cy="256" r="8" fill="#ffffff" />
+
+  <!-- Corner Tech Accent Pointers -->
+  <circle cx="96" cy="96" r="6" fill="#38bdf8" />
+  <circle cx="416" cy="96" r="6" fill="#34d399" />
+  <circle cx="96" cy="416" r="6" fill="#34d399" />
+  <circle cx="416" cy="416" r="6" fill="#38bdf8" />
+</svg>
