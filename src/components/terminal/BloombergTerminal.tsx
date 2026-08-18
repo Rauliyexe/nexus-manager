@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { DollarSign, ShieldAlert, ArrowUpRight, TrendingUp, Wallet, ArrowDownRight, LayoutDashboard, Calculator, Activity, Scale } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { USER_ROLE_LABELS } from '@/lib/types/nexus';
 import { LiveTerminalChart } from './LiveTerminalChart';
 import { LiveCashflowChart } from './LiveCashflowChart';
 import { HedgeCalculator } from './HedgeCalculator';
@@ -36,16 +37,16 @@ export const BloombergTerminal: React.FC = () => {
 
         <div className="p-4 bg-slate-950 rounded border border-amber-500/20 space-y-2 text-slate-300">
           <p>
-            User <strong className="text-amber-400">{currentUser.name}</strong> ({currentUser.role}) does not hold security clearance for live Bloomberg Financial Telemetry.
+            Usuário <strong className="text-amber-400">{currentUser.name}</strong> ({USER_ROLE_LABELS[currentUser.role] || currentUser.role}) não possui credenciais de acesso ao Terminal Bloomberg.
           </p>
           <p className="text-[11px] text-slate-400">
-            Authorized roles: <strong className="text-amber-300">ADMIN</strong>, <strong className="text-amber-300">DIRECTOR</strong>, or Managers of <strong className="text-amber-300">Financeiro</strong> and <strong className="text-amber-300">Controladoria</strong>.
+            Cargos autorizados: <strong className="text-amber-300">Dono</strong>, <strong className="text-amber-300">Diretor</strong>, <strong className="text-amber-300">Diretor de TI</strong>, ou Gerentes do <strong className="text-amber-300">Financeiro</strong>, <strong className="text-amber-300">Contabilidade</strong> e <strong className="text-amber-300">Auditoria</strong>.
           </p>
         </div>
 
         <div className="pt-2 space-y-2">
           <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
-            Simulate Executive Profile (RLS Security Test):
+            Simular Perfil Executivo (Teste RLS):
           </p>
           <div className="flex flex-wrap gap-2">
             {profiles
@@ -57,7 +58,7 @@ export const BloombergTerminal: React.FC = () => {
                   className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-amber-300 px-3 py-1.5 rounded border border-amber-500/30 text-xs transition-colors cursor-pointer"
                 >
                   <UserAvatar name={p.name} size="sm" />
-                  <span>Login as {p.name} ({p.role})</span>
+                  <span>Entrar como {p.name} ({USER_ROLE_LABELS[p.role] || p.role})</span>
                 </button>
               ))}
           </div>
@@ -76,10 +77,22 @@ export const BloombergTerminal: React.FC = () => {
     );
   }
 
+  const formattedApiTime = financialMetrics.lastUpdateTimestamp
+    ? new Date(financialMetrics.lastUpdateTimestamp).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : new Date().toLocaleTimeString('pt-BR');
+
+  const connectionState = financialMetrics.connectionState || 'LIVE';
+  const marketStatus = financialMetrics.marketStatus || 'OPEN';
+  const providerInfo = financialMetrics.providerInfo || 'AwesomeAPI + Banco Central (PTAX)';
+
   return (
     <div className="min-h-[calc(100vh-2rem)] bg-black text-amber-400 font-mono text-xs select-none p-3 space-y-3 border border-amber-500/30 rounded shadow-2xl">
       {/* Top Running Bloomberg Financial Ticker Header */}
-      <div className="bg-slate-950 border border-amber-500/40 p-2.5 rounded flex items-center justify-between overflow-x-auto whitespace-nowrap text-[11px] font-bold tracking-tight">
+      <div className="bg-slate-950 border border-amber-500/40 p-2.5 rounded flex items-center justify-between overflow-x-auto whitespace-nowrap text-[11px] font-bold tracking-tight gap-3">
         <div className="flex items-center space-x-4">
           <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[10px]">
             NEXUS TERMINAL
@@ -91,9 +104,29 @@ export const BloombergTerminal: React.FC = () => {
           <span className="text-amber-300">CAIXA: R$ {(financialMetrics.consolidatedCash / 1000000).toFixed(2)}M</span>
         </div>
 
-        <div className="flex items-center space-x-3 text-slate-400 text-[10px]">
-          <span>LIVE TELEMETRY</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        {/* Real-Time Connection & API Status Indicator */}
+        <div className="flex items-center space-x-3 text-[10px] shrink-0">
+          <span className="text-slate-400 font-mono hidden xl:inline-block">FONTE: {providerInfo}</span>
+          <span className="text-slate-400 font-mono">
+            Última atualização: <strong className="text-slate-200">{formattedApiTime}</strong>
+          </span>
+
+          {marketStatus === 'CLOSED' ? (
+            <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span>○ MERCADO FECHADO</span>
+            </span>
+          ) : connectionState === 'DEGRADED' || connectionState === 'OFFLINE' ? (
+            <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+              <span>× DADOS TEMPORARIAMENTE INDISPONÍVEIS</span>
+            </span>
+          ) : (
+            <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>● LIVE ({connectionState})</span>
+            </span>
+          )}
         </div>
       </div>
 

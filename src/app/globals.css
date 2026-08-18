@@ -1,14 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+/* ── Tailwind v4: dark mode via class on <html> ── */
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --copper-primary: #1B3026;
+  --copper-primary-dark: #14251D;
+  --copper-accent: #4D7C5D;
+  --copper-accent-glow: rgba(77, 124, 93, 0.15);
+
+  /* Light Mode Tokens (Rich contrast, warm sage neutral canvas) */
+  --bg-light: #EEF2EE;
+  --surface-light: #FFFFFF;
+  --surface-light-2: #E5EDE6;
+  --border-light: #D5E0D7;
+  --border-light-strong: #BDCEBF;
+  --text-light-main: #111D15;
+  --text-light-muted: #3B4F43;
+  --text-light-faint: #5E7567;
+
+  /* Dark Mode Tokens */
+  --bg-dark: #0B120E;
+  --surface-dark: #121D16;
+  --surface-dark-hover: #17261D;
+  --border-dark: #1E3125;
+  --text-dark-main: #F2F6F3;
+  --text-dark-muted: #8A9E90;
+
+  /* Brand */
+  --sidebar-bg: #1B3026;
+  --sidebar-footer: #16281F;
+  --sidebar-active: #2A4A3C;
+  --sidebar-hover: #233A2D;
+  --sidebar-text: #B3C5BA;
+  --sidebar-text-muted: #6F9580;
+  --green-accent: #76B38B;
+}
 
 @layer base {
   html, body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+    @apply antialiased transition-colors duration-150;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
+
+  html.dark body {
+    background-color: var(--bg-dark);
+    color: var(--text-dark-main);
+  }
+
+  html.light body {
+    background-color: var(--bg-light);
+    color: var(--text-light-main);
+  }
 }
 
-/* Safe Area Insets for iOS Notch and Home Indicator */
+/* Safe Area Insets for Mobile */
 .safe-area-pb {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
@@ -17,23 +66,32 @@
   padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
-/* Custom scrollbar for dark enterprise look */
+/* Custom scrollbar — light mode */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(27, 48, 38, 0.2);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: rgba(27, 48, 38, 0.4);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(18, 29, 22, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(77, 124, 93, 0.35);
 }
 
 /* Hide scrollbar utility */
@@ -51,4 +109,18 @@
     user-select: none;
     -webkit-user-select: none;
   }
+}
+
+/* Copper Group Card Shadow with rich depth */
+.card-shadow {
+  box-shadow: 0 1px 3px rgba(27, 48, 38, 0.07), 0 1px 2px rgba(27, 48, 38, 0.04);
+}
+
+.card-shadow-hover:hover {
+  box-shadow: 0 6px 16px rgba(27, 48, 38, 0.09), 0 2px 4px rgba(27, 48, 38, 0.04);
+}
+
+/* Smooth chart line for progress bars */
+.progress-bar {
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }

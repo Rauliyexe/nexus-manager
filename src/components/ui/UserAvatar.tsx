@@ -29,7 +29,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
 
   return (
     <div
-      className={`rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono flex items-center justify-center font-bold tracking-tighter shrink-0 select-none ${sizeClasses[size]} ${className}`}
+      className={`rounded bg-slate-800 border border-slate-700 text-[#1A281E] dark:text-slate-200 font-mono flex items-center justify-center font-bold tracking-tighter shrink-0 select-none ${sizeClasses[size]} ${className}`}
       title={name}
     >
       {initials}

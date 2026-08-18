@@ -18,7 +18,7 @@ export const ModeTransitionOverlay: React.FC = () => {
           {appMode === 'FINANCIAL_TERMINAL' ? (
             <Terminal className="w-6 h-6" />
           ) : (
-            <Globe className="w-6 h-6 text-sky-400" />
+            <Globe className="w-6 h-6 text-emerald-400" />
           )}
         </div>
 

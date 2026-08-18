@@ -9,15 +9,18 @@ import { DailyClosingModal } from '../modals/DailyClosingModal';
 import { ModeTransitionOverlay } from './ModeTransitionOverlay';
 import { BloombergTerminal } from '../terminal/BloombergTerminal';
 import { PWAInstallPrompt } from '../pwa/PWAInstallPrompt';
+import { IncomingTaskPopUpBanner } from './IncomingTaskPopUpBanner';
+import { TaskDetailsPopUpModal } from '../modals/TaskDetailsPopUpModal';
+import { OwnerCriticalAlertModal } from '../modals/OwnerCriticalAlertModal';
 import { useNexus } from '@/lib/store/nexusContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { appMode, isTransitioningMode, setAppMode } = useNexus();
+  const { appMode, isTransitioningMode, setAppMode, activePopUpTask, setActivePopUpTask } = useNexus();
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-slate-800 selection:text-slate-100">
+    <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#EEF2EE] dark:bg-[#0B120E] text-[#111D15] dark:text-[#F2F6F3] flex flex-col font-sans antialiased">
       {/* Mode Transition CRT Animation Overlay */}
       {isTransitioningMode && <ModeTransitionOverlay />}
 
@@ -33,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             <button
               onClick={() => setAppMode('OPERATIONS')}
-              className="bg-slate-900 hover:bg-slate-800 text-sky-400 font-bold px-3 py-1 rounded border border-sky-500/40 transition-colors flex items-center space-x-1.5 cursor-pointer"
+              className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-1 rounded border border-amber-500/40 transition-colors flex items-center space-x-1.5 cursor-pointer"
             >
               <span>VOLTAR AO MODO OPERACIONAL</span>
             </button>
@@ -43,10 +46,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : (
         /* Standard Operational Workspace Layout with Mobile-First Adaptability */
-        <div className="flex flex-1 min-h-screen">
+        <div className="flex flex-1 h-full min-h-0 overflow-hidden">
+          {/* Static, Non-scrolling Sidebar */}
           <Sidebar />
 
-          <div className="flex-1 flex flex-col min-w-0">
+          {/* Right Column with Topbar Fixed and Main scrollable */}
+          <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
             <Topbar
               onOpenClosingModal={() => setIsClosingModalOpen(true)}
               onToggleNotificationDrawer={() =>
@@ -54,7 +59,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }
             />
 
-            <main className="flex-1 p-2 sm:p-4 pb-20 md:pb-4 overflow-y-auto">{children}</main>
+            {/* ONLY this main area scrolls! */}
+            <main className="flex-1 min-h-0 overflow-y-auto pb-20 md:pb-6 focus:outline-none scroll-smooth">
+              {children}
+            </main>
           </div>
         </div>
       )}
@@ -65,7 +73,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* PWA Floating Install Prompt for Android, iOS & Desktop */}
       <PWAInstallPrompt />
 
-      {/* Global Modals & Drawers */}
+      {/* Global Modals, Drawers & Pop-ups */}
+      <IncomingTaskPopUpBanner />
+
+      <OwnerCriticalAlertModal />
+
+      <TaskDetailsPopUpModal
+        task={activePopUpTask}
+        onClose={() => setActivePopUpTask(null)}
+      />
+
       <DailyClosingModal
         isOpen={isClosingModalOpen}
         onClose={() => setIsClosingModalOpen(false)}

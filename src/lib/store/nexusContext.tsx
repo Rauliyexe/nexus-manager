@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Profile,
   Area,
@@ -15,6 +15,19 @@ import {
   MessageType,
   FinancialMetrics,
   AppMode,
+  HubTask,
+  TaskStatus,
+  TaskPriority,
+  TaskComment,
+  HubIntegration,
+  SupportTicket,
+  TicketCategory,
+  TicketStatus,
+  USER_ROLE_LABELS,
+  ITApprovalRequest,
+  OwnerCriticalAlert,
+  ApprovalStatus,
+  UserRole,
 } from '../types/nexus';
 import { encryptMessage } from '../crypto/encryptMessage';
 
@@ -75,8 +88,8 @@ const SEED_PROFILES: Profile[] = [
     name: 'Admin Nexus',
     email: 'admin@nexus.com.br',
     phone: '(11) 99999-9999',
-    role: 'ADMIN',
-    department: 'Tecnologia & Operações',
+    role: 'DONO',
+    department: 'Diretoria Geral',
     active: true,
   },
   {
@@ -84,17 +97,35 @@ const SEED_PROFILES: Profile[] = [
     name: 'Carlos Santos',
     email: 'carlos.diretoria@nexus.com.br',
     phone: '(11) 98888-0001',
-    role: 'DIRECTOR',
+    role: 'DIRETOR',
     department: 'Diretoria Executiva',
+    active: true,
+  },
+  {
+    id: 'usr-mgr-9',
+    name: 'Patricia Mendes',
+    email: 'patricia.ti@nexus.com.br',
+    phone: '(11) 98888-0010',
+    role: 'DIRETOR_TI',
+    department: 'TI',
+    active: true,
+  },
+  {
+    id: 'usr-ti-tech',
+    name: 'Lucas Nogueira',
+    email: 'lucas.suporte@nexus.com.br',
+    phone: '(11) 98888-0020',
+    role: 'EQUIPE_TI',
+    department: 'TI',
     active: true,
   },
   {
     id: 'usr-mgr-1',
     name: 'Ricardo Almeida',
-    email: 'ricardo.sucata@nexus.com.br',
+    email: 'ricardo.compras@nexus.com.br',
     phone: '(11) 98888-0002',
-    role: 'MANAGER',
-    department: 'Compras Sucata',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Comercial Compras',
     active: true,
   },
   {
@@ -102,108 +133,108 @@ const SEED_PROFILES: Profile[] = [
     name: 'Vanessa Lima',
     email: 'vanessa.vendas@nexus.com.br',
     phone: '(11) 98888-0003',
-    role: 'MANAGER',
-    department: 'Vendas Dcopper',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Comercial Vendas',
     active: true,
   },
   {
     id: 'usr-mgr-3',
     name: 'Marcos Oliveira',
-    email: 'marcos.frota@nexus.com.br',
+    email: 'marcos.logistica@nexus.com.br',
     phone: '(11) 98888-0004',
-    role: 'MANAGER',
-    department: 'Logística / Frota',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Logística',
     active: true,
   },
   {
     id: 'usr-mgr-4',
-    name: 'Patricia Mendes',
-    email: 'patricia.controladoria@nexus.com.br',
+    name: 'João Silva',
+    email: 'joao.financeiro@nexus.com.br',
     phone: '(11) 98888-0005',
-    role: 'MANAGER',
-    department: 'Controladoria',
+    role: 'GERENTE',
+    department: 'Financeiro',
     active: true,
   },
   {
     id: 'usr-mgr-5',
-    name: 'João Silva',
-    email: 'joao.financeiro@nexus.com.br',
+    name: 'Gabriel Barbosa',
+    email: 'gabriel.compras@nexus.com.br',
     phone: '(11) 98888-0006',
-    role: 'MANAGER',
-    department: 'Financeiro',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Compras',
     active: true,
   },
   {
     id: 'usr-mgr-6',
     name: 'Fernanda Souza',
-    email: 'fernanda.fiscal@nexus.com.br',
+    email: 'fernanda.contabilidade@nexus.com.br',
     phone: '(11) 98888-0007',
-    role: 'MANAGER',
-    department: 'Fiscal / Contábil',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Contabilidade',
     active: true,
   },
   {
     id: 'usr-mgr-7',
-    name: 'Roberto Rocha',
-    email: 'roberto.seguranca@nexus.com.br',
+    name: 'Ana Paula Costa',
+    email: 'ana.rh@nexus.com.br',
     phone: '(11) 98888-0008',
-    role: 'MANAGER',
-    department: 'Segurança',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Recursos Humanos',
     active: true,
   },
   {
     id: 'usr-mgr-8',
-    name: 'Ana Paula Costa',
-    email: 'ana.rh@nexus.com.br',
+    name: 'Roberto Rocha',
+    email: 'roberto.seguranca@nexus.com.br',
     phone: '(11) 98888-0009',
-    role: 'MANAGER',
-    department: 'RH',
-    active: true,
-  },
-  {
-    id: 'usr-mgr-9',
-    name: 'Gabriel Barbosa',
-    email: 'gabriel.compras@nexus.com.br',
-    phone: '(11) 98888-0010',
-    role: 'MANAGER',
-    department: 'Compras',
+    role: 'SUPERVISOR',
+    department: 'Monitoramento Segurança',
     active: true,
   },
   {
     id: 'usr-mgr-10',
     name: 'Beatriz Martins',
-    email: 'beatriz.compliance@nexus.com.br',
+    email: 'beatriz.auditoria@nexus.com.br',
     phone: '(11) 98888-0011',
-    role: 'MANAGER',
-    department: 'Compliance',
+    role: 'GERENTE_DEPARTAMENTO',
+    department: 'Auditoria',
+    active: true,
+  },
+  {
+    id: 'usr-emp-1',
+    name: 'Juliana Mendes',
+    email: 'juliana.operacoes@nexus.com.br',
+    phone: '(11) 98888-0030',
+    role: 'FUNCIONARIO',
+    department: 'Logística',
     active: true,
   },
 ];
 
 const SEED_AREAS: Area[] = [
-  { id: 'area-1', name: 'Compras Sucata', description: 'Aquisição de sucata de cobre, alumínio e ligas metálicas.', manager_id: 'usr-mgr-1' },
-  { id: 'area-2', name: 'Vendas Dcopper', description: 'Comercialização de vergalhão e arames de cobre Dcopper.', manager_id: 'usr-mgr-2' },
-  { id: 'area-3', name: 'Logística / Frota', description: 'Gestão de transporte, expedição e manutenção da frota.', manager_id: 'usr-mgr-3' },
-  { id: 'area-4', name: 'Controladoria', description: 'Auditoria interna, DRE gerencial e margens operacionais.', manager_id: 'usr-mgr-4' },
-  { id: 'area-5', name: 'Financeiro', description: 'Fluxo de caixa, tesouraria, contas a pagar e receber.', manager_id: 'usr-mgr-5' },
-  { id: 'area-6', name: 'Fiscal / Contábil', description: 'Emissão de NFs, obrigações acessórias e fechamento fiscal.', manager_id: 'usr-mgr-6' },
-  { id: 'area-7', name: 'Segurança', description: 'Segurança patrimonial, controle de acesso e monitoramento.', manager_id: 'usr-mgr-7' },
-  { id: 'area-8', name: 'RH', description: 'Gestão de pessoas, folha de pagamento e treinamento.', manager_id: 'usr-mgr-8' },
-  { id: 'area-9', name: 'Compras', description: 'Insumos industriais, peças de reposição e contratos.', manager_id: 'usr-mgr-9' },
-  { id: 'area-10', name: 'Compliance', description: 'Conformidade legal, licenças ambientais e auditoria.', manager_id: 'usr-mgr-10' },
+  { id: 'area-1', name: 'Comercial Compras', description: 'Aquisição comercial de sucatas metálicas, insumos de cobre e matérias-primas.', manager_id: 'usr-mgr-1' },
+  { id: 'area-2', name: 'Comercial Vendas', description: 'Vendas comerciais de vergalhão, arames e produtos de cobre Dcopper.', manager_id: 'usr-mgr-2' },
+  { id: 'area-3', name: 'Logística', description: 'Gestão de transporte, expedição e logística da frota de entregas.', manager_id: 'usr-mgr-3' },
+  { id: 'area-4', name: 'Financeiro', description: 'Gestão do fluxo de caixa, contas a pagar, receber e tesouraria.', manager_id: 'usr-mgr-4' },
+  { id: 'area-5', name: 'Compras', description: 'Compras corporativas, suprimentos industriais e cotação de fornecedores.', manager_id: 'usr-mgr-5' },
+  { id: 'area-6', name: 'Contabilidade', description: 'Escrituração contábil, apuração fiscal, obrigações acessórias e balanços.', manager_id: 'usr-mgr-6' },
+  { id: 'area-7', name: 'Recursos Humanos', description: 'Gestão de pessoas, recrutamento, departamento pessoal e eSocial.', manager_id: 'usr-mgr-7' },
+  { id: 'area-8', name: 'Monitoramento Segurança', description: 'Monitoramento de câmeras 24h, segurança patrimonial e controle de acesso.', manager_id: 'usr-mgr-8' },
+  { id: 'area-9', name: 'TI', description: 'Infraestrutura de TI, redes, segurança cibernética e suporte técnico.', manager_id: 'usr-mgr-9' },
+  { id: 'area-10', name: 'Auditoria', description: 'Auditoria interna de processos, conformidade legal e controle de qualidade.', manager_id: 'usr-mgr-10' },
 ];
 
 const SEED_OBLIGATIONS: Obligation[] = [
-  { id: 'ob-1', area_id: 'area-1', title: 'Cotação diária de Sucata de Cobre no LME', description: 'Atualizar tabela de preço de compra no sistema', frequency: 'DIARIA', due_time: '11:00', active: true, responsible_user_id: 'usr-mgr-1' },
-  { id: 'ob-2', area_id: 'area-2', title: 'Relatório diário de carteira de pedidos Dcopper', description: 'Conferir volume em toneladas faturado vs meta', frequency: 'DIARIA', due_time: '16:00', active: true, responsible_user_id: 'usr-mgr-2' },
-  { id: 'ob-3', area_id: 'area-3', title: 'Conferência de Checklist da Frota Própria', description: 'Vistoria técnica de caminhões antes de liberar frete', frequency: 'DIARIA', due_time: '08:00', active: true, responsible_user_id: 'usr-mgr-3' },
-  { id: 'ob-4', area_id: 'area-4', title: 'Fechamento semanal da margem operacional', description: 'Conferir apuração de custo industrial', frequency: 'SEMANAL', due_time: '17:00', active: true, responsible_user_id: 'usr-mgr-4' },
-  { id: 'ob-5', area_id: 'area-5', title: 'Conciliação bancária diária das contas Nexus', description: 'Validar extratos de todas as contas corporativas', frequency: 'DIARIA', due_time: '15:30', active: true, responsible_user_id: 'usr-mgr-5' },
-  { id: 'ob-6', area_id: 'area-6', title: 'Emissão de Guia SPED / Impostos estaduais', description: 'Verificar recolhimento ICMS ST', frequency: 'MENSAL', due_time: '17:00', active: true, responsible_user_id: 'usr-mgr-6' },
-  { id: 'ob-7', area_id: 'area-7', title: 'Ronda perimetral e auditoria de câmeras de alta tensão', description: 'Inspecionar galpões de fundição 1 e 2', frequency: 'DIARIA', due_time: '16:00', active: true, responsible_user_id: 'usr-mgr-7' },
-  { id: 'ob-8', area_id: 'area-8', title: 'Envio de dados do eSocial para folha de pagamento', description: 'Transmitir lote de admissões e atestados', frequency: 'SEMANAL', due_time: '14:00', active: true, responsible_user_id: 'usr-mgr-8' },
-  { id: 'ob-9', area_id: 'area-9', title: 'Aprovação de Ordens de Compra industriais > R$ 50k', description: 'Verificar 3 cotações de fornecedores homologados', frequency: 'DIARIA', due_time: '16:30', active: true, responsible_user_id: 'usr-mgr-9' },
-  { id: 'ob-10', area_id: 'area-10', title: 'Auditoria de licença ambiental Cetesb / IBAMA', description: 'Validar renovação anual de condicionantes', frequency: 'MENSAL', due_time: '17:00', active: true, responsible_user_id: 'usr-mgr-10' },
+  { id: 'ob-1', area_id: 'area-1', title: 'Cotação diária de Sucata de Cobre no LME', description: 'Atualizar tabela de preço de compra no comercial compras', frequency: 'DIARIA', due_time: '11:00', active: true, responsible_user_id: 'usr-mgr-1' },
+  { id: 'ob-2', area_id: 'area-2', title: 'Relatório diário de carteira de vendas Dcopper', description: 'Conferir volume em toneladas faturado vs meta comercial', frequency: 'DIARIA', due_time: '16:00', active: true, responsible_user_id: 'usr-mgr-2' },
+  { id: 'ob-3', area_id: 'area-3', title: 'Conferência de Checklist da Frota de Logística', description: 'Vistoria técnica de caminhões e roteirização de entregas', frequency: 'DIARIA', due_time: '08:00', active: true, responsible_user_id: 'usr-mgr-3' },
+  { id: 'ob-4', area_id: 'area-4', title: 'Fechamento do fluxo de caixa e conciliação bancária', description: 'Validar extratos bancários e saldos corporativos', frequency: 'DIARIA', due_time: '15:30', active: true, responsible_user_id: 'usr-mgr-4' },
+  { id: 'ob-5', area_id: 'area-5', title: 'Aprovação de Ordens de Compra industriais > R$ 50k', description: 'Verificar 3 cotações de fornecedores homologados', frequency: 'DIARIA', due_time: '16:30', active: true, responsible_user_id: 'usr-mgr-5' },
+  { id: 'ob-6', area_id: 'area-6', title: 'Emissão de Guia SPED / Balancete Contábil', description: 'Verificar apuração de impostos e guias fiscais', frequency: 'MENSAL', due_time: '17:00', active: true, responsible_user_id: 'usr-mgr-6' },
+  { id: 'ob-7', area_id: 'area-7', title: 'Envio de dados do eSocial para folha de pagamento', description: 'Transmitir lote de admissões e atestados ao governo', frequency: 'SEMANAL', due_time: '14:00', active: true, responsible_user_id: 'usr-mgr-7' },
+  { id: 'ob-8', area_id: 'area-8', title: 'Ronda perimetral e auditoria de câmeras de segurança', description: 'Inspecionar monitoramento 24h dos galpões de fundição', frequency: 'DIARIA', due_time: '16:00', active: true, responsible_user_id: 'usr-mgr-8' },
+  { id: 'ob-9', area_id: 'area-9', title: 'Auditoria de backup de servidores e links redundantes', description: 'Verificar integridade do cluster Supabase e firewall', frequency: 'DIARIA', due_time: '17:30', active: true, responsible_user_id: 'usr-mgr-9' },
+  { id: 'ob-10', area_id: 'area-10', title: 'Auditoria interna de conformidade e licenças Cetesb', description: 'Validar renovação anual de condicionantes e normas', frequency: 'MENSAL', due_time: '17:00', active: true, responsible_user_id: 'usr-mgr-10' },
 ];
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -215,19 +246,19 @@ const SEED_DAILY_STATUS: DailyStatus[] = [
   { id: 'st-4', area_id: 'area-4', user_id: 'usr-mgr-4', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:20:00Z` },
   { id: 'st-5', area_id: 'area-5', user_id: 'usr-mgr-5', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:25:00Z` },
   { id: 'st-6', area_id: 'area-6', user_id: 'usr-mgr-6', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:30:00Z` },
-  { id: 'st-7', area_id: 'area-7', user_id: 'usr-mgr-7', status: 'RED', justification: 'Falha detectada no sensor perimetral do portão 3.', date: TODAY, created_at: `${TODAY}T16:38:00Z` },
-  { id: 'st-8', area_id: 'area-8', user_id: 'usr-mgr-8', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:05:00Z` },
+  { id: 'st-7', area_id: 'area-7', user_id: 'usr-mgr-7', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:05:00Z` },
+  { id: 'st-8', area_id: 'area-8', user_id: 'usr-mgr-8', status: 'RED', justification: 'Falha detectada no sensor perimetral do portão 3.', date: TODAY, created_at: `${TODAY}T16:38:00Z` },
   { id: 'st-10', area_id: 'area-10', user_id: 'usr-mgr-10', status: 'GREEN', date: TODAY, created_at: `${TODAY}T16:35:00Z` },
 ];
 
 const SEED_ALERTS: Alert[] = [
   {
     id: 'alt-1',
-    area_id: 'area-7',
+    area_id: 'area-8',
     type: 'CRITICAL',
     priority: 'CRITICAL',
     status: 'OPEN',
-    title: '[CRÍTICO] Segurança — Sensor Perimetral Inoperante',
+    title: '[CRÍTICO] Monitoramento Segurança — Sensor Perimetral Inoperante',
     description: 'Falha detectada no sensor perimetral do portão 3 às 16:38. Manutenção técnica acionada.',
     created_at: `${TODAY}T16:38:00Z`,
   },
@@ -237,7 +268,7 @@ const SEED_ALERTS: Alert[] = [
     type: 'ATTENTION',
     priority: 'MEDIUM',
     status: 'OPEN',
-    title: '[ATENÇÃO] Logística / Frota — Liberação Retida',
+    title: '[ATENÇÃO] Logística — Liberação Retida no Pátio',
     description: 'Atraso na liberação da carreta #04 no pátio de triagem às 16:42.',
     created_at: `${TODAY}T16:42:00Z`,
   },
@@ -247,27 +278,27 @@ const SEED_ALERTS: Alert[] = [
     type: 'NO_RESPONSE',
     priority: 'HIGH',
     status: 'OPEN',
-    title: '[PENDENTE] Compras — Fechamento Não Realizado',
-    description: 'Área de Compras não registrou o fechamento diário até o horário limite das 17:00.',
+    title: '[PENDENTE] TI — Fechamento Diário Não Realizado',
+    description: 'Área de TI não registrou o fechamento diário até o horário limite das 17:00.',
     created_at: `${TODAY}T17:00:00Z`,
   },
 ];
 
 const SEED_CONVERSATIONS: Conversation[] = [
-  { id: 'conv-area-5', type: 'AREA', title: 'Financeiro', area_id: 'area-5', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-area-3', type: 'AREA', title: 'Logística / Frota', area_id: 'area-3', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-area-7', type: 'AREA', title: 'Segurança', area_id: 'area-7', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-area-9', type: 'AREA', title: 'Compras', area_id: 'area-9', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-grp-1', type: 'GROUP', title: 'Diretoria + Financeiro + Controladoria', created_at: `${TODAY}T09:00:00Z` },
+  { id: 'conv-area-4', type: 'AREA', title: 'Financeiro', area_id: 'area-4', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-3', type: 'AREA', title: 'Logística', area_id: 'area-3', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-8', type: 'AREA', title: 'Monitoramento Segurança', area_id: 'area-8', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-5', type: 'AREA', title: 'Compras', area_id: 'area-5', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-grp-1', type: 'GROUP', title: 'Diretoria + Comercial Compras + Vendas', created_at: `${TODAY}T09:00:00Z` },
   { id: 'conv-priv-1', type: 'PRIVATE', title: 'João Silva & Carlos Santos', created_at: `${TODAY}T10:00:00Z` },
 ];
 
 const SEED_MESSAGES: Record<string, Message[]> = {
-  'conv-area-5': [
+  'conv-area-4': [
     {
-      id: 'msg-5-1',
-      conversation_id: 'conv-area-5',
-      sender_id: 'usr-mgr-5',
+      id: 'msg-4-1',
+      conversation_id: 'conv-area-4',
+      sender_id: 'usr-mgr-4',
       content: 'A conciliação bancária do lote principal foi concluída sem divergências.',
       message_type: 'TEXT',
       created_at: `${TODAY}T14:20:00Z`,
@@ -279,25 +310,376 @@ const SEED_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'ntf-1',
     user_id: 'usr-admin',
-    title: '[CRÍTICO] Ocorrência em Segurança',
+    title: '[CRÍTICO] Ocorrência em Monitoramento Segurança',
     message: 'Roberto Rocha registrou status crítico: Falha no sensor perimetral.',
     type: 'CRITICAL',
     read: false,
-    link: '/areas/area-7',
+    link: '/areas/area-8',
     created_at: `${TODAY}T16:38:00Z`,
   },
 ];
 
+const SEED_DELEGATED_TASKS: HubTask[] = [
+  {
+    id: 'task-1',
+    code: 'TASK-0000',
+    title: 'Cotação & Auditoria de Sucata de Cobre — Lote #992',
+    description: 'Realizar auditoria física e cotação de pureza do lote de sucata proveniente do galpão SP.',
+    area_id: 'area-1',
+    area_name: 'Comercial Compras',
+    delegated_by_id: 'usr-dir',
+    delegated_by_name: 'Carlos Santos',
+    delegated_by_role: 'Diretor Executivo',
+    delegated_by_dept: 'Diretoria Geral',
+    delegated_by_code: 'MAT-0001',
+    delegated_by_email: 'carlos.santos@nexus.com.br',
+    assigned_to_id: 'usr-mgr-1',
+    assigned_to_name: 'Ricardo Almeida',
+    assigned_to_role: 'Gerente Comercial Compras',
+    assigned_to_dept: 'Comercial Compras',
+    assigned_to_code: 'MAT-0104',
+    assigned_to_email: 'ricardo.compras@nexus.com.br',
+    started_at: `${TODAY}T11:05:00Z`,
+    started_by_name: 'Ricardo Almeida',
+    started_by_role: 'Gerente Comercial Compras',
+    started_by_code: 'MAT-0104',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    due_date: `${TODAY}`,
+    created_at: `${TODAY}T10:30:15Z`,
+    updated_at: `${TODAY}T14:15:00Z`,
+    comments: [
+      {
+        id: 'cm-1',
+        user_id: 'usr-dir',
+        user_name: 'Carlos Santos',
+        user_role: 'DIRECTOR',
+        content: 'Ricardo, por favor verificar se a liga atende ao padrão 99.8% de pureza.',
+        created_at: `${TODAY}T10:32:00Z`,
+      },
+      {
+        id: 'cm-2',
+        user_id: 'usr-mgr-1',
+        user_name: 'Ricardo Almeida',
+        user_role: 'MANAGER',
+        content: 'Inspeção iniciada. O laboratório de ensaios já retirou 3 amostras do lote.',
+        created_at: `${TODAY}T14:15:00Z`,
+      },
+    ],
+  },
+  {
+    id: 'task-2',
+    code: 'TASK-0001',
+    title: 'Manutenção Preventiva do Portão 3 & Sensores Perimetrais',
+    description: 'Inspecionar sensores de presença infravermelho e recalibrar alarme no portão 3.',
+    area_id: 'area-8',
+    area_name: 'Monitoramento Segurança',
+    delegated_by_id: 'usr-admin',
+    delegated_by_name: 'Admin Nexus',
+    delegated_by_role: 'Supervisão de TI / Operações',
+    delegated_by_dept: 'TI',
+    delegated_by_code: 'MAT-0002',
+    delegated_by_email: 'admin@nexus.com.br',
+    assigned_to_id: 'usr-mgr-8',
+    assigned_to_name: 'Roberto Rocha',
+    assigned_to_role: 'Gestor de Monitoramento Segurança',
+    assigned_to_dept: 'Monitoramento Segurança',
+    assigned_to_code: 'MAT-0108',
+    assigned_to_email: 'roberto.seguranca@nexus.com.br',
+    status: 'OPEN',
+    priority: 'CRITICAL',
+    due_date: `${TODAY}`,
+    created_at: `${TODAY}T16:40:00Z`,
+    updated_at: `${TODAY}T16:40:00Z`,
+    comments: [
+      {
+        id: 'cm-3',
+        user_id: 'usr-admin',
+        user_name: 'Admin Nexus',
+        user_role: 'ADMIN',
+        content: 'Chamado urgente gerado automaticamente devido a alerta de falha no sensor.',
+        created_at: `${TODAY}T16:40:00Z`,
+      },
+    ],
+  },
+  {
+    id: 'task-3',
+    code: 'TASK-0002',
+    title: 'Conciliação Extraordinária de Câmbio USD/BRL do Contrato LME',
+    description: 'Efetuar trava cambial (Forward Lock) para cobrir carregamento de vergalhão faturado.',
+    area_id: 'area-4',
+    area_name: 'Financeiro',
+    delegated_by_id: 'usr-dir',
+    delegated_by_name: 'Carlos Santos',
+    delegated_by_role: 'Diretor Executivo',
+    delegated_by_dept: 'Diretoria Geral',
+    delegated_by_code: 'MAT-0001',
+    delegated_by_email: 'carlos.santos@nexus.com.br',
+    assigned_to_id: 'usr-mgr-4',
+    assigned_to_name: 'João Silva',
+    assigned_to_role: 'Gerente Financeiro',
+    assigned_to_dept: 'Financeiro',
+    assigned_to_code: 'MAT-0105',
+    assigned_to_email: 'joao.financeiro@nexus.com.br',
+    started_at: `${TODAY}T09:15:00Z`,
+    started_by_name: 'João Silva',
+    started_by_role: 'Gerente Financeiro',
+    started_by_code: 'MAT-0105',
+    completed_at: `${TODAY}T15:30:22Z`,
+    completed_by_name: 'João Silva',
+    completed_by_role: 'Gerente Financeiro',
+    completed_by_code: 'MAT-0105',
+    status: 'COMPLETED',
+    priority: 'MEDIUM',
+    due_date: `${TODAY}`,
+    created_at: `${TODAY}T09:00:00Z`,
+    updated_at: `${TODAY}T15:30:22Z`,
+    comments: [
+      {
+        id: 'cm-4',
+        user_id: 'usr-mgr-4',
+        user_name: 'João Silva',
+        user_role: 'MANAGER',
+        content: 'Trava concluída no valor de R$ 5,4200 com a tesouraria do BTG Pactual.',
+        created_at: `${TODAY}T15:30:22Z`,
+      },
+    ],
+  },
+  {
+    id: 'task-4',
+    code: 'TASK-0003',
+    title: 'Auditoria de Licença Ambiental Cetesb Fundição 2',
+    description: 'Revisar laudos de emissão de fumaça e documentação para renovação anual.',
+    area_id: 'area-10',
+    area_name: 'Auditoria',
+    delegated_by_id: 'usr-dir',
+    delegated_by_name: 'Carlos Santos',
+    delegated_by_role: 'Diretor Executivo',
+    delegated_by_dept: 'Diretoria Geral',
+    delegated_by_code: 'MAT-0001',
+    delegated_by_email: 'carlos.santos@nexus.com.br',
+    assigned_to_id: 'usr-mgr-10',
+    assigned_to_name: 'Beatriz Martins',
+    assigned_to_role: 'Gerente de Auditoria',
+    assigned_to_dept: 'Auditoria',
+    assigned_to_code: 'MAT-0111',
+    assigned_to_email: 'beatriz.auditoria@nexus.com.br',
+    started_at: `${TODAY}T11:30:00Z`,
+    started_by_name: 'Beatriz Martins',
+    started_by_role: 'Gerente de Auditoria',
+    started_by_code: 'MAT-0111',
+    status: 'IN_PROGRESS',
+    priority: 'HIGH',
+    due_date: `${TODAY}`,
+    created_at: `${TODAY}T11:00:00Z`,
+    updated_at: `${TODAY}T11:30:00Z`,
+    comments: [
+      {
+        id: 'cm-5',
+        user_id: 'usr-mgr-10',
+        user_name: 'Beatriz Martins',
+        user_role: 'MANAGER',
+        content: 'Documentação reunida. Agendada visita do engenheiro ambiental para quinta-feira.',
+        created_at: `${TODAY}T11:30:00Z`,
+      },
+    ],
+  },
+];
+
+const SEED_INTEGRATIONS: HubIntegration[] = [
+  {
+    id: 'int-1',
+    name: 'Feed LME Copper (London Metal Exchange)',
+    type: 'API',
+    status: 'ONLINE',
+    lastSync: 'Há 2 minutos',
+    latencyMs: 142,
+    endpointUrl: 'api.lme.com/v1/copper/spot',
+    description: 'Cotação contínua em tempo real do preço do Cobre USD/ton.',
+  },
+  {
+    id: 'int-2',
+    name: 'Banco Central do Brasil (BACEN PTAX)',
+    type: 'API',
+    status: 'ONLINE',
+    lastSync: 'Há 5 minutos',
+    latencyMs: 88,
+    endpointUrl: 'olinda.bcb.gov.br/ptax/v1',
+    description: 'Taxa oficial diária de Câmbio USD/BRL e indicadores de inflação.',
+  },
+  {
+    id: 'int-3',
+    name: 'Supabase Database Cluster (Projetos & Histórico)',
+    type: 'DATABASE',
+    status: 'ONLINE',
+    lastSync: 'Ativo (Real-time WS)',
+    latencyMs: 24,
+    endpointUrl: 'nexus-prod.supabase.co',
+    description: 'Persistência centralizada de rituais, delegamento de tarefas e logs.',
+  },
+  {
+    id: 'int-4',
+    name: 'ERP Dcopper Sync Industrial',
+    type: 'ERP',
+    status: 'SYNCING',
+    lastSync: 'Sincronizando...',
+    latencyMs: 210,
+    endpointUrl: 'erp.dcopper.internal/sync',
+    description: 'Integração com faturamento, inventário de sucata e ordens de produção.',
+  },
+  {
+    id: 'int-5',
+    name: 'Bot Telegram / WhatsApp Alertas Operacionais',
+    type: 'WEBHOOK',
+    status: 'ONLINE',
+    lastSync: 'Há 1 minuto',
+    latencyMs: 115,
+    endpointUrl: 'api.telegram.org/bot-nexus-alerts',
+    description: 'Notificações imediatas em pop-up e mensagens para gestores em plantão.',
+  },
+];
+
+const SEED_TICKETS: SupportTicket[] = [
+  {
+    id: 'tck-1',
+    code: 'INC-0000',
+    title: 'Substituição de Switch no Pátio de Logística #2',
+    description: 'Switch de rede apresentou perda de pacotes durante a leitura de barcode de cargas.',
+    category: 'TI_SUPPORTE',
+    area_id: 'area-3',
+    area_name: 'Logística',
+    priority: 'HIGH',
+    status: 'IN_PROGRESS',
+    created_at: `${TODAY}T09:30:00Z`,
+    updated_at: `${TODAY}T10:15:00Z`,
+    created_by_id: 'usr-mgr-3',
+    created_by_name: 'Marcos Oliveira',
+    created_by_role: 'Gerente de Logística',
+    created_by_code: 'MAT-0104',
+    assigned_to_name: 'Patricia Mendes',
+    assigned_to_code: 'MAT-0110',
+  },
+  {
+    id: 'tck-2',
+    code: 'INC-0001',
+    title: 'Recalibração do Sensor Perimetral Portão 3',
+    description: 'Alarme perimetral disparando falso positivo por interferência no sensor óptico.',
+    category: 'SEGURANCA',
+    area_id: 'area-8',
+    area_name: 'Monitoramento Segurança',
+    priority: 'CRITICAL',
+    status: 'OPEN',
+    created_at: `${TODAY}T16:38:00Z`,
+    updated_at: `${TODAY}T16:38:00Z`,
+    created_by_id: 'usr-admin',
+    created_by_name: 'Admin Nexus',
+    created_by_role: 'NOC / TI',
+    created_by_code: 'MAT-0002',
+    assigned_to_name: 'Roberto Rocha',
+    assigned_to_code: 'MAT-0108',
+  },
+  {
+    id: 'tck-3',
+    code: 'INC-0002',
+    title: 'Solicitação de Acesso ao Módulo SPED Contábil',
+    description: 'Liberar credencial de acesso de leitura para novos analistas do setor de Contabilidade.',
+    category: 'TI_SUPPORTE',
+    area_id: 'area-6',
+    area_name: 'Contabilidade',
+    priority: 'MEDIUM',
+    status: 'RESOLVED',
+    created_at: `${TODAY}T11:00:00Z`,
+    updated_at: `${TODAY}T14:20:00Z`,
+    created_by_id: 'usr-mgr-6',
+    created_by_name: 'Fernanda Souza',
+    created_by_role: 'Gerente de Contabilidade',
+    created_by_code: 'MAT-0107',
+    assigned_to_name: 'Patricia Mendes',
+    assigned_to_code: 'MAT-0110',
+    resolution_notes: 'Credenciais concedidas no sistema de privilégios com permissão SPED_READONLY.',
+  },
+];
+
+const SEED_IT_REQUESTS: ITApprovalRequest[] = [
+  {
+    id: 'req-1',
+    code: 'REQ-0001',
+    title: 'Alteração de Cargo: Juliana Mendes',
+    description: 'Solicitação para promover funcionária do setor de Logística para Gerente de Departamento.',
+    requested_by_name: 'Lucas Nogueira',
+    requested_by_role: 'Equipe de TI',
+    target_user_id: 'usr-emp-1',
+    target_user_name: 'Juliana Mendes',
+    current_role: 'FUNCIONARIO',
+    proposed_role: 'GERENTE_DEPARTAMENTO',
+    sensitivity: 'HIGH',
+    status: 'PENDING_TI_APPROVAL',
+    created_at: `${TODAY}T14:10:00Z`,
+  },
+  {
+    id: 'req-2',
+    code: 'REQ-0002',
+    title: 'Elevação de Privilégios: Roberto Rocha',
+    description: 'Concessão de privilégios para elevação ao cargo de Diretor de TI.',
+    requested_by_name: 'Admin Nexus',
+    requested_by_role: 'Dono',
+    target_user_id: 'usr-mgr-8',
+    target_user_name: 'Roberto Rocha',
+    current_role: 'SUPERVISOR',
+    proposed_role: 'DIRETOR_TI',
+    sensitivity: 'CRITICAL',
+    status: 'PENDING_TI_APPROVAL',
+    created_at: `${TODAY}T16:45:00Z`,
+  },
+];
+
 interface NexusContextType {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
   appMode: AppMode;
   isTransitioningMode: boolean;
   setAppMode: (mode: AppMode) => void;
+  hubRoleView: 'OWNER' | 'EMPLOYEE';
+  setHubRoleView: (roleView: 'OWNER' | 'EMPLOYEE') => void;
   currentUser: Profile;
   profiles: Profile[];
   areas: Area[];
   obligations: Obligation[];
   dailyStatuses: DailyStatus[];
   alerts: Alert[];
+  tasks: HubTask[];
+  tickets: SupportTicket[];
+  itRequests: ITApprovalRequest[];
+  activeOwnerCriticalAlert: OwnerCriticalAlert | null;
+  integrations: HubIntegration[];
+  activePopUpTask: HubTask | null;
+  incomingTaskNotification: { task: HubTask; time: string } | null;
+  setActivePopUpTask: (task: HubTask | null) => void;
+  dismissIncomingTaskNotification: () => void;
+  delegateTask: (taskData: {
+    title: string;
+    description: string;
+    area_id: string;
+    assigned_to_id?: string;
+    priority: TaskPriority;
+    due_date: string;
+    initial_comment?: string;
+  }) => HubTask;
+  createTicket: (ticketData: {
+    title: string;
+    description: string;
+    category: TicketCategory;
+    area_id: string;
+    priority: TaskPriority;
+  }) => SupportTicket;
+  updateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  updateTaskStatus: (taskId: string, status: TaskStatus) => void;
+  updateUserProfileRole: (targetUserId: string, proposedRole: UserRole) => void;
+  approveITRequest: (requestId: string) => void;
+  rejectITRequest: (requestId: string, reason?: string) => void;
+  dismissOwnerCriticalAlert: () => void;
+  addTaskComment: (taskId: string, content: string) => void;
+  triggerIntegrationSync: (integrationId: string) => Promise<void>;
   conversations: Conversation[];
   messages: Record<string, Message[]>;
   notifications: NotificationItem[];
@@ -323,19 +705,84 @@ interface NexusContextType {
 const NexusContext = createContext<NexusContextType | undefined>(undefined);
 
 export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [appMode, setAppModeState] = useState<AppMode>('OPERATIONS');
   const [isTransitioningMode, setIsTransitioningMode] = useState<boolean>(false);
-  const [profiles] = useState<Profile[]>(SEED_PROFILES);
+  const [hubRoleView, setHubRoleView] = useState<'OWNER' | 'EMPLOYEE'>('OWNER');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('copper_theme') as 'light' | 'dark' | null;
+    const initialTheme = savedTheme || 'light';
+    setTheme(initialTheme);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(initialTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('copper_theme', newTheme);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(newTheme);
+  };
+  const [profiles, setProfiles] = useState<Profile[]>(SEED_PROFILES);
   const [currentUser, setCurrentUser] = useState<Profile>(SEED_PROFILES[0]);
   const [areas, setAreas] = useState<Area[]>(SEED_AREAS);
   const [obligations, setObligations] = useState<Obligation[]>(SEED_OBLIGATIONS);
   const [dailyStatuses, setDailyStatuses] = useState<DailyStatus[]>(SEED_DAILY_STATUS);
   const [alerts, setAlerts] = useState<Alert[]>(SEED_ALERTS);
+  const [tickets, setTickets] = useState<SupportTicket[]>(SEED_TICKETS);
+  const [itRequests, setItRequests] = useState<ITApprovalRequest[]>(SEED_IT_REQUESTS);
+  const [activeOwnerCriticalAlert, setActiveOwnerCriticalAlert] = useState<OwnerCriticalAlert | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>(SEED_CONVERSATIONS);
   const [messages, setMessages] = useState<Record<string, Message[]>>(SEED_MESSAGES);
   const [notifications, setNotifications] = useState<NotificationItem[]>(SEED_NOTIFICATIONS);
-  const [financialMetrics] = useState<FinancialMetrics>(SEED_FINANCIAL_METRICS);
+  const [financialMetrics, setFinancialMetrics] = useState<FinancialMetrics>(SEED_FINANCIAL_METRICS);
   const [activeConversationId, setActiveConversationId] = useState<string | null>('conv-area-5');
+
+  // Real Market Data Polling & Synchronization Engine (Next.js API Server Route)
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const fetchRealMarketData = async () => {
+      try {
+        const res = await fetch('/api/market-data');
+        if (res.ok) {
+          const data = await res.json();
+          if (!isSubscribed) return;
+
+          setFinancialMetrics((prev) => ({
+            ...prev,
+            copperSpotUSD: data.copperSpotUSD || prev.copperSpotUSD,
+            usdBrlRate: data.usdBrlRate || prev.usdBrlRate,
+            copperSpotBRLPerKg: data.copperSpotBRLPerKg || prev.copperSpotBRLPerKg,
+            scrapBuyPriceBRLPerKg: data.scrapBuyPriceBRLPerKg || prev.scrapBuyPriceBRLPerKg,
+            copperMarginPerTon: data.copperMarginPerTon || prev.copperMarginPerTon,
+            connectionState: data.connectionState || 'LIVE',
+            lastUpdateTimestamp: data.lastUpdateTimestamp || new Date().toISOString(),
+            providerInfo: data.provider || 'AwesomeAPI + Banco Central',
+            marketStatus: data.marketStatus || 'OPEN',
+            marketStatusReason: data.marketStatusReason || 'Mercado Aberto',
+          }));
+        }
+      } catch (err) {
+        console.warn('[RealMarketData Sync Warning]:', err);
+        if (!isSubscribed) return;
+        setFinancialMetrics((prev) => ({
+          ...prev,
+          connectionState: 'DEGRADED',
+        }));
+      }
+    };
+
+    fetchRealMarketData();
+    const interval = setInterval(fetchRealMarketData, 5000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const setAppMode = (newMode: AppMode) => {
     if (newMode === appMode) return;
@@ -349,8 +796,11 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const hasFinancialAccess = (user: Profile): boolean => {
-    if (user.role === 'ADMIN' || user.role === 'DIRECTOR') return true;
-    if (user.role === 'MANAGER' && (user.department?.includes('Financeiro') || user.department?.includes('Controladoria'))) {
+    if (user.role === 'DONO' || user.role === 'DIRETOR' || user.role === 'DIRETOR_TI') return true;
+    if (
+      (user.role === 'GERENTE' || user.role === 'GERENTE_DEPARTAMENTO') &&
+      (user.department?.includes('Financeiro') || user.department?.includes('Contabilidade') || user.department?.includes('Auditoria'))
+    ) {
       return true;
     }
     return false;
@@ -383,6 +833,11 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const found = profiles.find((p) => p.id === userId);
     if (found) {
       setCurrentUser(found);
+      if (found.role === 'DONO') {
+        setHubRoleView('OWNER');
+      } else {
+        setHubRoleView('EMPLOYEE');
+      }
     }
   };
 
@@ -635,18 +1090,393 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   });
 
+  const [tasks, setTasks] = useState<HubTask[]>(SEED_DELEGATED_TASKS);
+  const [integrations, setIntegrations] = useState<HubIntegration[]>(SEED_INTEGRATIONS);
+  const [activePopUpTask, setActivePopUpTask] = useState<HubTask | null>(null);
+  const [incomingTaskNotification, setIncomingTaskNotification] = useState<{ task: HubTask; time: string } | null>(null);
+
+  const dismissIncomingTaskNotification = () => {
+    setIncomingTaskNotification(null);
+  };
+
+  const delegateTask = (taskData: {
+    title: string;
+    description: string;
+    area_id: string;
+    assigned_to_id?: string;
+    priority: TaskPriority;
+    due_date: string;
+    initial_comment?: string;
+  }): HubTask => {
+    const area = areas.find((a) => a.id === taskData.area_id);
+    const assignedUser = profiles.find((p) => p.id === taskData.assigned_to_id);
+    const nowISO = new Date().toISOString();
+    const taskId = `task-${Date.now()}`;
+    const seqCode = `TASK-${String(tasks.length).padStart(4, '0')}`;
+
+    const comments: TaskComment[] = [];
+    if (taskData.initial_comment && taskData.initial_comment.trim() !== '') {
+      comments.push({
+        id: `cm-${Date.now()}`,
+        user_id: currentUser.id,
+        user_name: currentUser.name,
+        user_role: currentUser.role,
+        content: taskData.initial_comment.trim(),
+        created_at: nowISO,
+      });
+    }
+
+    const newTask: HubTask = {
+      id: taskId,
+      code: seqCode,
+      title: taskData.title,
+      description: taskData.description,
+      area_id: taskData.area_id,
+      area_name: area?.name || 'Geral',
+      delegated_by_id: currentUser.id,
+      delegated_by_name: currentUser.name,
+      delegated_by_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+      delegated_by_dept: currentUser.department || 'Diretoria Geral',
+      delegated_by_code: 'MAT-0001',
+      delegated_by_email: currentUser.email || 'carlos.santos@nexus.com.br',
+      assigned_to_id: taskData.assigned_to_id,
+      assigned_to_name: assignedUser?.name || area?.manager?.name || 'Setor ' + (area?.name || ''),
+      assigned_to_role: assignedUser ? 'Gerente de Área' : 'Analista Responsável',
+      assigned_to_dept: area?.name || 'Operacional',
+      assigned_to_code: assignedUser ? `MAT-01${assignedUser.id.replace('usr-mgr-', '').padStart(2, '0')}` : 'MAT-0100',
+      assigned_to_email: assignedUser?.email || 'operacoes@nexus.com.br',
+      status: 'OPEN',
+      priority: taskData.priority,
+      due_date: taskData.due_date || TODAY,
+      created_at: nowISO,
+      updated_at: nowISO,
+      comments,
+    };
+
+    setTasks((prev) => [newTask, ...prev]);
+
+    // Trigger Pop-up Toast
+    setIncomingTaskNotification({ task: newTask, time: 'Agora mesmo' });
+
+    // Also push a global notification item
+    const notifItem: NotificationItem = {
+      id: `ntf-task-${Date.now()}`,
+      user_id: assignedUser?.id || currentUser.id,
+      title: `[NOVA TAREFA] ${newTask.code} — ${newTask.title}`,
+      message: `${currentUser.name} delegou uma nova tarefa para ${newTask.area_name}.`,
+      type: newTask.priority === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+      read: false,
+      link: `/hub?task=${newTask.id}`,
+      created_at: nowISO,
+    };
+    setNotifications((prev) => [notifItem, ...prev]);
+
+    return newTask;
+  };
+
+  const createTicket = (ticketData: {
+    title: string;
+    description: string;
+    category: TicketCategory;
+    area_id: string;
+    priority: TaskPriority;
+  }): SupportTicket => {
+    const area = areas.find((a) => a.id === ticketData.area_id);
+    const nowISO = new Date().toISOString();
+    const ticketId = `tck-${Date.now()}`;
+    const seqCode = `INC-${String(tickets.length).padStart(4, '0')}`;
+
+    const newTicket: SupportTicket = {
+      id: ticketId,
+      code: seqCode,
+      title: ticketData.title,
+      description: ticketData.description,
+      category: ticketData.category,
+      area_id: ticketData.area_id,
+      area_name: area?.name || 'Geral',
+      priority: ticketData.priority,
+      status: 'OPEN',
+      created_at: nowISO,
+      updated_at: nowISO,
+      created_by_id: currentUser.id,
+      created_by_name: currentUser.name,
+      created_by_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+      created_by_code: 'MAT-0001',
+      assigned_to_name: area?.manager?.name || 'Equipe de Atendimento',
+      assigned_to_code: 'MAT-0110',
+    };
+
+    setTickets((prev) => [newTicket, ...prev]);
+
+    // Also push notification
+    const notifItem: NotificationItem = {
+      id: `ntf-tck-${Date.now()}`,
+      user_id: currentUser.id,
+      title: `[NOVO CHAMADO] ${newTicket.code} — ${newTicket.title}`,
+      message: `${currentUser.name} abriu um chamado operacional para ${newTicket.area_name}.`,
+      type: newTicket.priority === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+      read: false,
+      link: `/tasks?ticket=${newTicket.id}`,
+      created_at: nowISO,
+    };
+    setNotifications((prev) => [notifItem, ...prev]);
+
+    return newTicket;
+  };
+
+  const updateTicketStatus = (ticketId: string, status: TicketStatus, notes?: string) => {
+    const nowISO = new Date().toISOString();
+    setTickets((prev) =>
+      prev.map((t) => {
+        if (t.id === ticketId) {
+          return {
+            ...t,
+            status,
+            updated_at: nowISO,
+            ...(notes ? { resolution_notes: notes } : {}),
+          };
+        }
+        return t;
+      })
+    );
+  };
+
+  const updateUserProfileRole = (targetUserId: string, proposedRole: UserRole) => {
+    const targetUser = profiles.find((p) => p.id === targetUserId);
+    if (!targetUser) return;
+    if (targetUser.role === proposedRole) return;
+
+    const nowISO = new Date().toISOString();
+    const isSensitive =
+      proposedRole === 'DONO' ||
+      proposedRole === 'DIRETOR' ||
+      proposedRole === 'DIRETOR_TI' ||
+      targetUser.role === 'DIRETOR_TI';
+    const isCritical = proposedRole === 'DONO' || proposedRole === 'DIRETOR_TI';
+
+    const reqId = `req-${Date.now()}`;
+    const seqCode = `REQ-${String(itRequests.length + 1).padStart(4, '0')}`;
+
+    const newRequest: ITApprovalRequest = {
+      id: reqId,
+      code: seqCode,
+      title: `Alteração de Cargo: ${targetUser.name}`,
+      description: `Solicitação para alterar cargo de ${USER_ROLE_LABELS[targetUser.role]} para ${USER_ROLE_LABELS[proposedRole]}.`,
+      requested_by_name: currentUser.name,
+      requested_by_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+      target_user_id: targetUser.id,
+      target_user_name: targetUser.name,
+      current_role: targetUser.role,
+      proposed_role: proposedRole,
+      sensitivity: isCritical ? 'CRITICAL' : isSensitive ? 'HIGH' : 'MEDIUM',
+      status: 'PENDING_TI_APPROVAL',
+      created_at: nowISO,
+    };
+
+    setItRequests((prev) => [newRequest, ...prev]);
+
+    // If action is CRITICAL or HIGH, trigger Pop-up for the Owner
+    if (isCritical || isSensitive) {
+      setActiveOwnerCriticalAlert({
+        id: `crit-${Date.now()}`,
+        protocol: `ALERT-CRIT-${Math.floor(1000 + Math.random() * 9000)}`,
+        title: `[ALERTA CRÍTICO DE TI] Solicitação de Cargo Sensível`,
+        description: `O colaborador ${currentUser.name} (${USER_ROLE_LABELS[currentUser.role]}) solicitou alteração do cargo de ${targetUser.name} para ${USER_ROLE_LABELS[proposedRole]}. Esta operação requer aprovação final da Diretoria de TI.`,
+        author_name: currentUser.name,
+        author_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+        timestamp: nowISO,
+        target_name: targetUser.name,
+        action_summary: `Elevação / Alteração de Privilégio: ${USER_ROLE_LABELS[targetUser.role]} ➔ ${USER_ROLE_LABELS[proposedRole]}`,
+      });
+    }
+
+    // Push notification to TI Director
+    const notifItem: NotificationItem = {
+      id: `ntf-ti-${Date.now()}`,
+      user_id: 'usr-mgr-9', // Patricia Mendes (Diretora de TI)
+      title: `[SOLICITAÇÃO TI] ${newRequest.code} — Pendente de Aprovação`,
+      message: `${currentUser.name} solicitou alteração de cargo para ${targetUser.name}.`,
+      type: isCritical ? 'CRITICAL' : 'WARNING',
+      read: false,
+      link: `/ti-console?req=${reqId}`,
+      created_at: nowISO,
+    };
+    setNotifications((prev) => [notifItem, ...prev]);
+  };
+
+  const approveITRequest = (requestId: string) => {
+    const req = itRequests.find((r) => r.id === requestId);
+    if (!req) return;
+
+    const nowISO = new Date().toISOString();
+
+    // 1. Update request status to APPROVED
+    setItRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'APPROVED',
+              approved_by_name: currentUser.name,
+              approved_at: nowISO,
+            }
+          : r
+      )
+    );
+
+    // 2. Update target user role in profiles list
+    setProfiles((prev) =>
+      prev.map((p) => (p.id === req.target_user_id ? { ...p, role: req.proposed_role } : p))
+    );
+
+    // If current user was updated, update currentUser state as well
+    if (currentUser.id === req.target_user_id) {
+      setCurrentUser((prev) => ({ ...prev, role: req.proposed_role }));
+    }
+  };
+
+  const rejectITRequest = (requestId: string, reason?: string) => {
+    setItRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'REJECTED',
+              rejection_reason: reason || 'Rejeitado pela Diretoria de TI.',
+            }
+          : r
+      )
+    );
+  };
+
+  const dismissOwnerCriticalAlert = () => {
+    setActiveOwnerCriticalAlert(null);
+  };
+
+  const updateTaskStatus = (taskId: string, status: TaskStatus) => {
+    const nowISO = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const isStarting = status === 'IN_PROGRESS' && !t.started_at;
+          const isCompleting = status === 'COMPLETED';
+
+          const updated: HubTask = {
+            ...t,
+            status,
+            updated_at: nowISO,
+            ...(isStarting
+              ? {
+                  started_at: nowISO,
+                  started_by_name: currentUser.name,
+                  started_by_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+                  started_by_code: 'MAT-0001',
+                }
+              : {}),
+            ...(isCompleting
+              ? {
+                  completed_at: nowISO,
+                  completed_by_name: currentUser.name,
+                  completed_by_role: USER_ROLE_LABELS[currentUser.role] || currentUser.role,
+                  completed_by_code: 'MAT-0001',
+                }
+              : {}),
+          };
+
+          if (activePopUpTask?.id === taskId) {
+            setActivePopUpTask(updated);
+          }
+          return updated;
+        }
+        return t;
+      })
+    );
+  };
+
+  const addTaskComment = (taskId: string, content: string) => {
+    if (!content.trim()) return;
+    const nowISO = new Date().toISOString();
+    const newComment: TaskComment = {
+      id: `cm-${Date.now()}`,
+      user_id: currentUser.id,
+      user_name: currentUser.name,
+      user_role: currentUser.role,
+      content: content.trim(),
+      created_at: nowISO,
+    };
+
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          const updated = {
+            ...t,
+            updated_at: nowISO,
+            comments: [...t.comments, newComment],
+          };
+          if (activePopUpTask?.id === taskId) {
+            setActivePopUpTask(updated);
+          }
+          return updated;
+        }
+        return t;
+      })
+    );
+  };
+
+  const triggerIntegrationSync = async (integrationId: string) => {
+    setIntegrations((prev) =>
+      prev.map((i) => (i.id === integrationId ? { ...i, status: 'SYNCING', lastSync: 'Sincronizando...' } : i))
+    );
+    await new Promise((res) => setTimeout(res, 1200));
+    setIntegrations((prev) =>
+      prev.map((i) =>
+        i.id === integrationId
+          ? {
+              ...i,
+              status: 'ONLINE',
+              lastSync: 'Sincronizado agora',
+              latencyMs: Math.floor(Math.random() * 40) + 15,
+            }
+          : i
+      )
+    );
+  };
+
   return (
     <NexusContext.Provider
       value={{
+        theme,
+        toggleTheme,
         appMode,
         isTransitioningMode,
         setAppMode,
+        hubRoleView,
+        setHubRoleView,
         currentUser,
         profiles,
         areas: enrichedAreas,
         obligations,
         dailyStatuses,
         alerts,
+        tasks,
+        tickets,
+        itRequests,
+        activeOwnerCriticalAlert,
+        integrations,
+        activePopUpTask,
+        incomingTaskNotification,
+        setActivePopUpTask,
+        dismissIncomingTaskNotification,
+        delegateTask,
+        createTicket,
+        updateTicketStatus,
+        updateTaskStatus,
+        updateUserProfileRole,
+        approveITRequest,
+        rejectITRequest,
+        dismissOwnerCriticalAlert,
+        addTaskComment,
+        triggerIntegrationSync,
         conversations,
         messages,
         notifications,

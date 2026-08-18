@@ -2,164 +2,140 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, ChevronDown, CheckCircle2, LayoutDashboard, Terminal } from 'lucide-react';
+import { Bell, Search, Sun, Moon, ChevronRight } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { USER_ROLE_LABELS } from '@/lib/types/nexus';
 
 interface TopbarProps {
   onOpenClosingModal: () => void;
   onToggleNotificationDrawer: () => void;
 }
 
+const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
+  '/hub':              { title: 'Dashboard',              sub: 'Visão geral do desempenho e indicadores' },
+  '/areas':            { title: 'Projetos',               sub: 'Áreas e departamentos operacionais' },
+  '/dashboard':        { title: 'Indicadores',            sub: 'Métricas e KPIs consolidados' },
+  '/reports':          { title: 'Relatórios',             sub: 'Relatórios executivos e gerenciais' },
+  '/tasks':            { title: 'Tarefas',                sub: 'Gestão de tarefas e chamados' },
+  '/chat':             { title: 'Equipe',                 sub: 'Conversas e comunicação interna' },
+  '/obligations':      { title: 'Documentos',             sub: 'Obrigações e rituais operacionais' },
+  '/alerts':           { title: 'Alertas',                sub: 'Central de alertas e incidentes' },
+  '/financial':        { title: 'Financeiro',             sub: 'Dashboard financeiro e DRE' },
+  '/terminal':         { title: 'Terminal Bloomberg',     sub: 'Dados de mercado em tempo real' },
+  '/ti-console':       { title: 'Console TI',             sub: 'Painel técnico e gestão IAM' },
+  '/settings':         { title: 'Configurações',          sub: 'Preferências e administração' },
+  '/admin/simulacao':  { title: 'Simulador Admin',        sub: 'Simulação de perfis e permissões' },
+};
+
 export const Topbar: React.FC<TopbarProps> = ({
   onOpenClosingModal,
   onToggleNotificationDrawer,
 }) => {
   const pathname = usePathname();
-  const { currentUser, profiles, switchUser, notifications, areas, appMode, setAppMode, hasFinancialAccess } = useNexus();
+  const { currentUser, profiles, switchUser, notifications, theme, toggleTheme } = useNexus();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const isAuthorizedForTerminal = hasFinancialAccess(currentUser);
 
-  let contextTitle = 'Dashboard';
-  let shortTitle = 'Dashboard';
-
-  if (pathname === '/hub') {
-    contextTitle = 'Central de Comando';
-    shortTitle = 'Hub';
-  } else if (pathname === '/areas') {
-    contextTitle = 'Áreas Operacionais';
-    shortTitle = 'Áreas';
-  } else if (pathname?.startsWith('/areas/')) {
-    const areaId = pathname.replace('/areas/', '');
-    const foundArea = areas.find((a) => a.id === areaId);
-    contextTitle = `Áreas / ${foundArea?.name || 'Detalhes'}`;
-    shortTitle = foundArea?.name || 'Área';
-  } else if (pathname === '/obligations') {
-    contextTitle = 'Obrigações & Rituais';
-    shortTitle = 'Rituais';
-  } else if (pathname === '/alerts') {
-    contextTitle = 'Central de Alertas';
-    shortTitle = 'Alertas';
-  } else if (pathname === '/chat') {
-    contextTitle = 'Conversas Internas';
-    shortTitle = 'Chat';
-  } else if (pathname === '/financial') {
-    contextTitle = 'Dashboard Financeiro';
-    shortTitle = 'Finanças';
-  } else if (pathname === '/terminal') {
-    contextTitle = 'Terminal Bloomberg';
-    shortTitle = 'Terminal';
-  } else if (pathname === '/reports') {
-    contextTitle = 'Relatórios Executivos';
-    shortTitle = 'Relatórios';
-  } else if (pathname === '/admin/simulacao') {
-    contextTitle = 'Simulador Admin';
-    shortTitle = 'Simulador';
-  } else if (pathname === '/settings') {
-    contextTitle = 'Configurações';
-    shortTitle = 'Ajustes';
-  }
+  const areaMatch = pathname?.match(/^\/areas\/(.+)$/);
+  let pageMeta = PAGE_TITLES[pathname ?? ''] ?? { title: 'Dashboard', sub: 'Copper Group' };
+  if (areaMatch) pageMeta = { title: 'Projetos', sub: `Área: ${areaMatch[1]}` };
 
   return (
-    <header className="h-12 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between sticky top-0 z-30 select-none font-sans">
-      {/* Left: Brand & Titles (Adaptive for Mobile/Desktop) */}
-      <div className="flex items-center space-x-2.5 min-w-0">
-        {/* Mobile Brand Icon */}
-        <div className="md:hidden w-6 h-6 rounded bg-slate-800 border border-slate-700 text-sky-400 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
-          NX
+    <header className="h-16 bg-white dark:bg-[#0B120E] border-b border-[#D5E0D7] dark:border-[#1E3125] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 select-none font-sans transition-colors duration-150 shadow-xs">
+      {/* Left: Page title + breadcrumb */}
+      <div className="flex items-center space-x-3 min-w-0">
+        {/* Mobile: Copper Group brand mark */}
+        <div className="md:hidden flex items-center space-x-2">
+          <div className="w-7 h-7 rounded-lg bg-[#1B3026] flex items-center justify-center shrink-0">
+            <span className="w-3 h-3 border-2 border-[#76B38B] rounded-sm block" />
+          </div>
+          <span className="text-sm font-bold text-[#111D15] dark:text-white tracking-tight">
+            {pageMeta.title}
+          </span>
         </div>
 
-        {/* Desktop Breadcrumbs */}
-        <span className="hidden md:inline-block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider truncate">
-          Nexus Operations / {appMode === 'FINANCIAL_TERMINAL' ? 'Terminal Bloomberg' : contextTitle}
-        </span>
-
-        {/* Mobile Short Title */}
-        <span className="md:hidden text-xs font-bold text-slate-100 uppercase tracking-wider font-mono truncate">
-          {shortTitle}
-        </span>
-
-        <span className="hidden lg:inline-block text-slate-700">|</span>
-
-        {/* Desktop Dual Mode Switcher Button (Hidden on Mobile) */}
-        <div className="hidden lg:flex items-center bg-slate-950 p-0.5 rounded border border-slate-800 text-xs font-mono font-medium">
-          <button
-            onClick={() => setAppMode('OPERATIONS')}
-            className={`px-2.5 py-0.5 rounded transition-colors flex items-center space-x-1.5 cursor-pointer ${
-              appMode === 'OPERATIONS'
-                ? 'bg-slate-800 text-slate-100 font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <LayoutDashboard className="w-3 h-3 text-sky-400" />
-            <span>Modo Operacional</span>
-          </button>
-
-          <button
-            onClick={() => setAppMode('FINANCIAL_TERMINAL')}
-            className={`px-2.5 py-0.5 rounded transition-colors flex items-center space-x-1.5 cursor-pointer ${
-              appMode === 'FINANCIAL_TERMINAL'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Terminal className="w-3 h-3 text-amber-400" />
-            <span>Terminal Bloomberg</span>
-            {isAuthorizedForTerminal && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1" />
-            )}
-          </button>
+        {/* Desktop: page title + breadcrumb */}
+        <div className="hidden md:block min-w-0">
+          <div className="flex items-center space-x-1.5 text-xs text-[#3B4F43] dark:text-slate-400">
+            <span className="font-semibold text-[#1B3026] dark:text-[#76B38B]">Copper Group</span>
+            <ChevronRight className="w-3 h-3 text-[#5E7567]" />
+            <span className="font-bold text-[#111D15] dark:text-slate-100">{pageMeta.title}</span>
+          </div>
+          <p className="text-xs text-[#5E7567] dark:text-slate-400 mt-0.5 hidden lg:block truncate max-w-sm">
+            {pageMeta.sub}
+          </p>
         </div>
       </div>
 
-      {/* Right: Actions & User Dropdown */}
+      {/* Right: Search + Theme + Notifications + User */}
       <div className="flex items-center space-x-2 shrink-0">
-        {/* Desktop-only Quick Closing Button (On mobile, it is in Bottom Nav) */}
-        <button
-          onClick={onOpenClosingModal}
-          className="hidden sm:flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs px-2.5 py-1 rounded border border-slate-700 transition-colors cursor-pointer"
-        >
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Fechamento</span>
-        </button>
+        {/* Search */}
+        <div className="relative hidden sm:block">
+          <input
+            type="text"
+            placeholder="Buscar..."
+            className="w-44 lg:w-56 pl-8 pr-3 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs text-[#111D15] dark:text-slate-200 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026] transition-colors"
+          />
+          <Search className="w-3.5 h-3.5 text-[#5E7567] absolute left-2.5 top-2.5 pointer-events-none" />
+        </div>
 
-        {/* Notifications Icon Button */}
+        {/* Theme Toggle */}
         <button
-          onClick={onToggleNotificationDrawer}
-          className="relative p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-          title="Notificações"
-          aria-label="Notificações"
+          onClick={toggleTheme}
+          className="p-2 rounded-xl bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] text-[#3B4F43] dark:text-slate-300 hover:border-[#1B3026] dark:hover:border-[#4D7C5D] transition-all cursor-pointer"
+          title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+          aria-label="Alternar Tema"
         >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full" />
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-[#1B3026]" />
           )}
         </button>
 
-        {/* User Role Switcher Dropdown */}
+        {/* Notifications */}
+        <button
+          onClick={onToggleNotificationDrawer}
+          className="relative p-2 rounded-xl bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] text-[#3B4F43] dark:text-slate-300 hover:border-[#1B3026] dark:hover:border-[#4D7C5D] transition-colors cursor-pointer"
+          title="Notificações"
+          aria-label="Notificações"
+        >
+          <Bell className="w-4 h-4 text-[#1B3026] dark:text-slate-300" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#2C6E49] dark:bg-[#76B38B] rounded-full border-2 border-white dark:border-[#0B120E]" />
+          )}
+        </button>
+
+        {/* User Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 text-xs text-slate-300 transition-colors hover:bg-slate-800 cursor-pointer"
+            className="flex items-center space-x-2 pl-2 pr-3 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs hover:border-[#1B3026] dark:hover:border-[#4D7C5D] transition-colors cursor-pointer"
           >
-            <UserAvatar name={currentUser.name} size="sm" />
-            <span className="font-medium text-xs hidden md:inline truncate max-w-[100px]">{currentUser.name}</span>
-            <span className="px-1 py-0.2 text-[9px] font-mono font-semibold bg-slate-800 text-slate-400 rounded">
-              {currentUser.role}
-            </span>
-            <ChevronDown className="w-3 h-3 text-slate-500" />
+            <UserAvatar name={currentUser.name} size="sm" className="bg-[#1B3026] text-white font-bold" />
+            <div className="text-left hidden sm:block">
+              <p className="font-bold text-[#111D15] dark:text-slate-100 text-xs leading-none">
+                {currentUser.name}
+              </p>
+              <p className="text-[10px] text-[#5E7567] dark:text-slate-400 font-medium mt-0.5">
+                {USER_ROLE_LABELS[currentUser.role] || currentUser.role}
+              </p>
+            </div>
           </button>
 
           {showUserDropdown && (
-            <div className="absolute right-0 mt-1.5 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-3 py-1.5 border-b border-slate-800">
-                <p className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                  Simular Perfil RLS
-                </p>
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150 card-shadow">
+              <div className="p-2 border-b border-[#D5E0D7] dark:border-[#1E3125] mb-1">
+                <p className="font-bold text-xs text-[#111D15] dark:text-white">{currentUser.name}</p>
+                <p className="text-[10px] text-[#5E7567] dark:text-slate-400">{currentUser.email}</p>
               </div>
-              <div className="max-h-56 overflow-y-auto py-0.5 divide-y divide-slate-800/40">
+
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                <span className="text-[9px] font-bold text-[#5E7567] uppercase px-2 py-1 block">
+                  Simular outro perfil:
+                </span>
                 {profiles.map((p) => (
                   <button
                     key={p.id}
@@ -167,15 +143,14 @@ export const Topbar: React.FC<TopbarProps> = ({
                       switchUser(p.id);
                       setShowUserDropdown(false);
                     }}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs hover:bg-slate-800 transition-colors cursor-pointer ${
-                      p.id === currentUser.id ? 'bg-slate-800 text-slate-100 font-bold' : 'text-slate-300'
+                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      p.id === currentUser.id
+                        ? 'bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] font-bold'
+                        : 'text-[#3B4F43] dark:text-slate-300 hover:bg-[#EEF2EE] dark:hover:bg-[#17261D]'
                     }`}
                   >
-                    <div className="truncate pr-2">
-                      <p className="truncate font-medium text-xs">{p.name}</p>
-                      <p className="text-[9px] font-mono text-slate-500 truncate">{p.department}</p>
-                    </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-950 text-slate-400 font-mono shrink-0">
+                    <span className="truncate">{p.name}</span>
+                    <span className="text-[9px] text-[#5E7567] dark:text-slate-400 font-mono shrink-0 ml-1">
                       {p.role}
                     </span>
                   </button>

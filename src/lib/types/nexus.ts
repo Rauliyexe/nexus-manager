@@ -1,4 +1,24 @@
-export type UserRole = 'ADMIN' | 'DIRECTOR' | 'MANAGER' | 'EMPLOYEE';
+export type UserRole =
+  | 'DONO'
+  | 'DIRETOR'
+  | 'DIRETOR_TI'
+  | 'EQUIPE_TI'
+  | 'GERENTE'
+  | 'GERENTE_DEPARTAMENTO'
+  | 'SUPERVISOR'
+  | 'FUNCIONARIO';
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  DONO: 'Dono',
+  DIRETOR: 'Diretor',
+  DIRETOR_TI: 'Diretor de TI',
+  EQUIPE_TI: 'Equipe de TI',
+  GERENTE: 'Gerente',
+  GERENTE_DEPARTAMENTO: 'Gerente de Departamento',
+  SUPERVISOR: 'Supervisor',
+  FUNCIONARIO: 'Funcionário',
+};
+
 
 export type DailyStatusType = 'GREEN' | 'YELLOW' | 'RED' | 'NO_RESPONSE';
 
@@ -171,6 +191,11 @@ export interface FinancialMetrics {
   accounts: AccountBalance[];
   dre: DREItem[];
   agingSchedule: AgingScheduleItem[];
+  connectionState?: 'LIVE' | 'CACHE' | 'OFFLINE' | 'DEGRADED';
+  lastUpdateTimestamp?: string;
+  providerInfo?: string;
+  marketStatus?: 'OPEN' | 'CLOSED' | 'AFTER_HOURS';
+  marketStatusReason?: string;
 }
 
 // Hedge & Derivative Instruments Interfaces
@@ -226,4 +251,132 @@ export interface CommodityArbitrageMetrics {
   deltaEbitdaPer100USD: number; // Sensibilidade de EBITDA em BRL para cada $100 na LME
   deltaEbitdaPer10CentsDollar: number; // Sensibilidade para cada R$ 0,10 no câmbio
 }
+
+// Delegated Tasks & Feedback System Interfaces
+export type TaskStatus = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface TaskComment {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_role?: string;
+  content: string;
+  created_at: string;
+}
+
+export interface HubTask {
+  id: string;
+  code: string; // Formatted sequence ID starting at TASK-0000
+  title: string;
+  description: string;
+  area_id: string;
+  area_name?: string;
+  
+  // Delegator / Creator Employee Info
+  delegated_by_id: string;
+  delegated_by_name: string;
+  delegated_by_role?: string;
+  delegated_by_dept?: string;
+  delegated_by_code?: string;
+  delegated_by_email?: string;
+
+  // Assigned / Executor Employee Info
+  assigned_to_id?: string;
+  assigned_to_name?: string;
+  assigned_to_role?: string;
+  assigned_to_dept?: string;
+  assigned_to_code?: string;
+  assigned_to_email?: string;
+
+  // Execution Start Timestamp & Staff Info
+  started_at?: string;
+  started_by_name?: string;
+  started_by_role?: string;
+  started_by_code?: string;
+
+  // Completion Timestamp & Staff Info
+  completed_at?: string;
+  completed_by_name?: string;
+  completed_by_role?: string;
+  completed_by_code?: string;
+
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date: string;
+  created_at: string; // Exact ISO timestamp
+  updated_at: string;
+  comments: TaskComment[];
+}
+
+export interface HubIntegration {
+  id: string;
+  name: string;
+  type: 'API' | 'DATABASE' | 'ERP' | 'WEBHOOK' | 'MESSAGE_BUS';
+  status: 'ONLINE' | 'SYNCING' | 'OFFLINE' | 'DEGRADED';
+  lastSync: string;
+  latencyMs: number;
+  endpointUrl?: string;
+  description: string;
+}
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type TicketCategory = 'TI_SUPPORTE' | 'MANUTENCAO' | 'SEGURANCA' | 'SUPRIMENTOS' | 'RH_PESSOAS' | 'OUTROS';
+
+export interface SupportTicket {
+  id: string;
+  code: string; // INC-0000 format
+  title: string;
+  description: string;
+  category: TicketCategory;
+  area_id: string;
+  area_name?: string;
+  priority: TaskPriority;
+  status: TicketStatus;
+  created_at: string;
+  updated_at: string;
+  created_by_id: string;
+  created_by_name: string;
+  created_by_role?: string;
+  created_by_code?: string;
+  assigned_to_name?: string;
+  assigned_to_code?: string;
+  resolution_notes?: string;
+}
+
+export type ApprovalStatus = 'PENDING_TI_APPROVAL' | 'APPROVED' | 'REJECTED';
+
+export interface ITApprovalRequest {
+  id: string;
+  code: string; // REQ-0000 format
+  title: string;
+  description: string;
+  requested_by_name: string;
+  requested_by_role: string;
+  target_user_id: string;
+  target_user_name: string;
+  current_role: UserRole;
+  proposed_role: UserRole;
+  sensitivity: 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: ApprovalStatus;
+  created_at: string;
+  approved_by_name?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+}
+
+export interface OwnerCriticalAlert {
+  id: string;
+  protocol: string; // ALERT-CRIT-0000 format
+  title: string;
+  description: string;
+  author_name: string;
+  author_role: string;
+  timestamp: string;
+  target_name: string;
+  action_summary: string;
+}
+
+
+
 

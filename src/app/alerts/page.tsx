@@ -19,9 +19,9 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-3 max-w-7xl mx-auto font-sans">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3.5 rounded shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] p-3.5 rounded shadow-xs">
         <div>
-          <h1 className="text-sm font-bold text-slate-100 font-sans tracking-tight">
+          <h1 className="text-sm font-bold text-[#1A281E] dark:text-slate-100 font-sans tracking-tight">
             Central de Alertas Operacionais
           </h1>
           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -33,7 +33,7 @@ export default function AlertsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+            className="bg-[#F5F7F5] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded px-2.5 py-1 text-xs text-[#1A281E] dark:text-slate-200 focus:outline-none"
           >
             <option value="ALL">Todos os Status</option>
             <option value="OPEN">Abertos</option>
@@ -44,7 +44,7 @@ export default function AlertsPage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none"
+            className="bg-[#F5F7F5] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded px-2.5 py-1 text-xs text-[#1A281E] dark:text-slate-200 focus:outline-none"
           >
             <option value="ALL">Todas as Prioridades</option>
             <option value="CRITICAL">Crítica</option>
@@ -55,7 +55,7 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded shadow-xs divide-y divide-slate-800">
+      <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded shadow-xs divide-y divide-[#E2E8E3] dark:divide-[#1E3125]">
         {filteredAlerts.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-xs font-mono">
             Nenhum alerta encontrado para os filtros selecionados.
@@ -91,8 +91,8 @@ export default function AlertsPage() {
                   </p>
 
                   <div className="flex items-center space-x-3 text-[10px] text-slate-500 font-mono pl-3.5 pt-0.5">
-                    <span>Área: <strong className="text-slate-400">{area?.name}</strong></span>
-                    <span>Gestor: <strong className="text-slate-400">{area?.manager?.name}</strong></span>
+                    <span>Área: <strong className="text-[#5C6E62] dark:text-slate-400">{area?.name}</strong></span>
+                    <span>Gestor: <strong className="text-[#5C6E62] dark:text-slate-400">{area?.manager?.name}</strong></span>
                     <span>
                       {new Date(alt.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -103,7 +103,7 @@ export default function AlertsPage() {
                   {alt.status === 'OPEN' && (
                     <button
                       onClick={() => acknowledgeAlert(alt.id)}
-                      className="px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700"
+                      className="px-2.5 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-[#1A281E] dark:text-slate-200 rounded border border-slate-700"
                     >
                       Ciente
                     </button>
@@ -112,7 +112,7 @@ export default function AlertsPage() {
                   {alt.status !== 'RESOLVED' ? (
                     <button
                       onClick={() => resolveAlert(alt.id)}
-                      className="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 rounded border border-slate-700"
+                      className="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-[#1A281E] dark:text-slate-100 rounded border border-slate-700"
                     >
                       Marcar Resolvido
                     </button>

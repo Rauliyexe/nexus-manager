@@ -23,7 +23,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {category}
           </p>
         )}
-        <h1 className="text-lg font-bold text-slate-100 font-sans tracking-tight">
+        <h1 className="text-lg font-bold text-[#1A281E] dark:text-slate-100 font-sans tracking-tight">
           {title}
         </h1>
         {subtitle && (

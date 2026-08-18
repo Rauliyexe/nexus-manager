@@ -59,26 +59,26 @@ export const DailyClosingModal: React.FC<DailyClosingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 font-sans">
       <div
         className="fixed inset-0"
         onClick={onClose}
       />
-      <div className="bg-slate-900 border border-slate-700/80 rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-xs font-sans z-10 animate-in slide-in-from-bottom duration-250 max-h-[92vh] flex flex-col">
+      <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-xs z-10 animate-in slide-in-from-bottom duration-250 max-h-[92vh] flex flex-col card-shadow">
         {/* Header */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div className="p-4 border-b border-[#E2E8E3] dark:border-[#1E3125] flex items-center justify-between bg-[#F5F7F5] dark:bg-[#0B120E]">
           <div>
-            <h2 className="font-bold text-slate-100 font-mono uppercase text-xs sm:text-sm flex items-center space-x-2">
+            <h2 className="font-bold text-[#1A281E] dark:text-slate-100 uppercase text-xs sm:text-sm flex items-center space-x-2">
               <span>Fechamento do Dia</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-[#4D7C5D] animate-pulse" />
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#5C6E62] dark:text-slate-400 mt-0.5">
               Atualize o status operacional da sua área hoje.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#8FA595] hover:text-[#1A281E] dark:hover:text-slate-200 hover:bg-[#E2E8E3] dark:hover:bg-[#1E3125] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -86,20 +86,20 @@ export const DailyClosingModal: React.FC<DailyClosingModalProps> = ({
 
         {successMessage ? (
           <div className="p-8 text-center space-y-3">
-            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
+            <div className="w-12 h-12 bg-[#EBF2EE] dark:bg-[#1C2E24] text-[#2C523D] dark:text-[#76B38B] rounded-full flex items-center justify-center mx-auto border border-[#D4E8DB] dark:border-[#1E3125]">
               <Check className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-100 font-mono">{successMessage}</h3>
+            <h3 className="text-sm font-semibold text-[#1A281E] dark:text-slate-100">{successMessage}</h3>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto">
             {/* Area Selector */}
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1 text-xs">Área Operacional</label>
+            <div className="space-y-1.5">
+              <label className="block font-semibold text-[#5C6E62] dark:text-slate-400 text-xs">Área Operacional</label>
               <select
                 value={selectedAreaId}
                 onChange={(e) => setSelectedAreaId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-500 font-sans"
+                className="w-full bg-[#F5F7F5] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl px-3 py-2 text-xs text-[#1A281E] dark:text-slate-100 focus:outline-none focus:border-[#4D7C5D] font-sans cursor-pointer transition-colors"
               >
                 {areas.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -110,86 +110,90 @@ export const DailyClosingModal: React.FC<DailyClosingModalProps> = ({
             </div>
 
             {/* Status Select Big Tactile Buttons with Symbols */}
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1.5 text-xs">Status do Dia</label>
+            <div className="space-y-1.5">
+              <label className="block font-semibold text-[#5C6E62] dark:text-slate-400 text-xs">Status do Dia</label>
               <div className="grid grid-cols-3 gap-2 font-mono">
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('GREEN')}
-                  className={`py-2.5 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
                     selectedStatus === 'GREEN'
-                      ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-md ring-2 ring-emerald-500/50 font-bold scale-102'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-[#EBF2EE] dark:bg-[#1C2E24] text-[#2C523D] dark:text-[#76B38B] border-[#D4E8DB] dark:border-[#1E3125] shadow-xs'
+                      : 'bg-[#F5F7F5] dark:bg-[#0B120E] text-[#5C6E62] dark:text-slate-400 border-[#E2E8E3] dark:border-[#1E3125] hover:border-[#4D7C5D]/40'
                   }`}
                 >
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                  <span className="text-xs">OK (Normal)</span>
+                  <ShieldCheck className="w-5 h-5 text-[#4D7C5D]" />
+                  <span className="font-bold text-[11px]">Normal (OK)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('YELLOW')}
-                  className={`py-2.5 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
                     selectedStatus === 'YELLOW'
-                      ? 'bg-amber-500/25 border-amber-400 text-amber-300 shadow-md ring-2 ring-amber-500/50 font-bold scale-102'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 shadow-xs'
+                      : 'bg-[#F5F7F5] dark:bg-[#0B120E] text-[#5C6E62] dark:text-slate-400 border-[#E2E8E3] dark:border-[#1E3125] hover:border-amber-400/40'
                   }`}
                 >
-                  <AlertTriangle className="w-5 h-5 text-amber-400" />
-                  <span className="text-xs">ATENÇÃO</span>
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  <span className="font-bold text-[11px]">Atenção</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('RED')}
-                  className={`py-2.5 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
+                  className={`py-3 px-2 rounded-xl border flex flex-col items-center justify-center space-y-1 transition-all cursor-pointer ${
                     selectedStatus === 'RED'
-                      ? 'bg-rose-500/25 border-rose-400 text-rose-300 shadow-md ring-2 ring-rose-500/50 font-bold scale-102'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800 shadow-xs'
+                      : 'bg-[#F5F7F5] dark:bg-[#0B120E] text-[#5C6E62] dark:text-slate-400 border-[#E2E8E3] dark:border-[#1E3125] hover:border-rose-400/40'
                   }`}
                 >
-                  <AlertCircle className="w-5 h-5 text-rose-400" />
-                  <span className="text-xs">CRÍTICO</span>
+                  <AlertCircle className="w-5 h-5 text-rose-500" />
+                  <span className="font-bold text-[11px]">Crítico</span>
                 </button>
               </div>
             </div>
 
-            {/* Justification Field */}
+            {/* Justification Textarea */}
             {(selectedStatus === 'YELLOW' || selectedStatus === 'RED') && (
-              <div className="animate-in fade-in duration-150">
-                <label className="block font-semibold text-slate-300 mb-1 text-xs">
-                  Justificativa / Ocorrência <span className="text-rose-400">*</span>
+              <div className="space-y-1.5 animate-in fade-in duration-150">
+                <label className="block font-semibold text-rose-600 dark:text-rose-400 text-xs">
+                  Justificativa Obrigatória *
                 </label>
                 <textarea
+                  required
                   rows={3}
                   value={justification}
                   onChange={(e) => setJustification(e.target.value)}
-                  placeholder="Explique o motivo do alerta ou parada operacional..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans"
+                  placeholder="Explique o motivo do desvio operacional e as medidas em curso..."
+                  className="w-full bg-[#F5F7F5] dark:bg-[#0B120E] border border-rose-300 dark:border-rose-900 rounded-xl p-3 text-xs text-[#1A281E] dark:text-slate-100 placeholder-[#8FA595] focus:outline-none focus:border-rose-500 resize-none transition-colors"
                 />
               </div>
             )}
 
             {errorMessage && (
-              <div className="p-2.5 bg-rose-950/60 border border-rose-500/40 rounded-xl text-rose-300 text-xs font-mono">
-                {errorMessage}
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
 
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800 safe-area-pb">
+            {/* Actions */}
+            <div className="pt-2 border-t border-[#E2E8E3] dark:border-[#1E3125] flex items-center justify-end space-x-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                className="px-4 py-2 rounded-xl bg-[#F0F4F1] dark:bg-[#17261D] hover:bg-[#E2E8E3] dark:hover:bg-[#1C2E24] text-[#5C6E62] dark:text-slate-400 text-xs font-medium cursor-pointer transition-colors border border-[#E2E8E3] dark:border-[#1E3125]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-[#1B3026] hover:bg-[#2A4A3C] disabled:opacity-50 text-white font-semibold text-xs flex items-center space-x-1.5 cursor-pointer shadow-sm transition-all"
               >
-                {isSubmitting ? 'Registrando...' : 'Confirmar Fechamento'}
+                <Check className="w-3.5 h-3.5" />
+                <span>Confirmar Fechamento</span>
               </button>
             </div>
           </form>

@@ -99,6 +99,23 @@ export const LiveTerminalChart: React.FC<LiveTerminalChartProps> = ({
     setCurrentPrice(last.close);
     setPriceChange(last.close - initialPrice);
     setPriceChangePct(((last.close - initialPrice) / initialPrice) * 100);
+  }, []);
+
+  // Synchronize live tick stream when initialPrice prop updates from context
+  useEffect(() => {
+    if (initialPrice && allCandlesRef.current.length > 0) {
+      setCurrentPrice(initialPrice);
+      const firstPrice = allCandlesRef.current[0].open;
+      const change = initialPrice - firstPrice;
+      const pct = (change / firstPrice) * 100;
+      setPriceChange(change);
+      setPriceChangePct(pct);
+
+      const last = allCandlesRef.current[allCandlesRef.current.length - 1];
+      last.high = Math.max(last.high, initialPrice);
+      last.low = Math.min(last.low, initialPrice);
+      last.close = initialPrice;
+    }
   }, [initialPrice]);
 
   // Real-time tick engine with configurable timeframe speed
