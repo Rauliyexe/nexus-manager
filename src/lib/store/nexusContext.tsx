@@ -86,6 +86,15 @@ const SEED_FINANCIAL_METRICS: FinancialMetrics = {
 
 const SEED_PROFILES: Profile[] = [
   {
+    id: 'usr-nexus-ai',
+    name: 'Nexus AI Copilot',
+    email: 'ai@nexus.com.br',
+    phone: 'IA Corporativa (Gemini)',
+    role: 'GERENTE',
+    department: 'Nexus Intelligence',
+    active: true,
+  },
+  {
     id: 'usr-admin',
     name: 'Admin Nexus',
     email: 'admin@nexus.com.br',
@@ -287,6 +296,7 @@ const SEED_ALERTS: Alert[] = [
 ];
 
 const SEED_CONVERSATIONS: Conversation[] = [
+  { id: 'conv-ai-copilot', type: 'PRIVATE', title: 'Nexus AI Copilot (Gemini)', created_at: `${TODAY}T08:00:00Z` },
   { id: 'conv-area-4', type: 'AREA', title: 'Financeiro', area_id: 'area-4', created_at: `${TODAY}T08:00:00Z` },
   { id: 'conv-area-1', type: 'AREA', title: 'Comercial Compras', area_id: 'area-1', created_at: `${TODAY}T08:00:00Z` },
   { id: 'conv-area-2', type: 'AREA', title: 'Comercial Vendas', area_id: 'area-2', created_at: `${TODAY}T08:00:00Z` },
@@ -300,6 +310,17 @@ const SEED_CONVERSATIONS: Conversation[] = [
 ];
 
 const SEED_MESSAGES: Record<string, Message[]> = {
+  'conv-ai-copilot': [
+    {
+      id: 'msg-ai-welcome',
+      conversation_id: 'conv-ai-copilot',
+      sender_id: 'usr-nexus-ai',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-nexus-ai'),
+      content: 'Olá! Sou o seu **Nexus AI Copilot** conectado ao Google Gemini. Você pode conversar comigo diretamente aqui para consultar tarefas pendentes, checar status de projetos, pedir resumos ou criar demandas operacionais!',
+      message_type: 'TEXT',
+      created_at: `${TODAY}T08:00:00Z`,
+    },
+  ],
   'conv-area-4': [
     {
       id: 'msg-4-1',
@@ -788,7 +809,8 @@ interface NexusContextType {
     conversationId: string,
     content: string,
     messageType?: MessageType,
-    attachments?: MessageAttachment[]
+    attachments?: MessageAttachment[],
+    customSender?: Profile
   ) => Promise<void>;
   togglePinMessage: (conversationId: string, messageId: string) => void;
   addReaction: (conversationId: string, messageId: string, emoji: string) => void;
@@ -1065,16 +1087,18 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     conversationId: string,
     content: string,
     messageType: MessageType = 'TEXT',
-    attachments?: MessageAttachment[]
+    attachments?: MessageAttachment[],
+    customSender?: Profile
   ) => {
     const timestamp = new Date().toISOString();
     const encrypted = await encryptMessage(content, conversationId);
+    const sender = messageType === 'SYSTEM' ? undefined : (customSender || currentUser);
 
     const newMsg: Message = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       conversation_id: conversationId,
-      sender_id: messageType === 'SYSTEM' ? undefined : currentUser.id,
-      sender: messageType === 'SYSTEM' ? undefined : currentUser,
+      sender_id: sender?.id,
+      sender: sender,
       content: encrypted.ciphertext,
       message_type: messageType,
       created_at: timestamp,

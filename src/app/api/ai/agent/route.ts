@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
       req.headers.get('x-gemini-api-key') ||
       body.geminiApiKey ||
       process.env.GEMINI_API_KEY;
+    const geminiModel =
+      req.headers.get('x-gemini-model') ||
+      body.geminiModel ||
+      process.env.GEMINI_MODEL;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
     // ── 1. PRIORIDADE: Google Gemini (Free Tier / Flash) com Tool Calling ──
@@ -32,15 +36,16 @@ export async function POST(req: NextRequest) {
           message,
           history,
           context as AgentContext,
-          geminiKey
+          geminiKey,
+          geminiModel
         );
         if (geminiResult && geminiResult.text) {
           return NextResponse.json(geminiResult);
         }
-      } catch (geminiErr) {
+      } catch (geminiErr: any) {
         console.warn(
           'Aviso: Falha na requisição com a Gemini API. Tentando provedor secundário ou fallback.',
-          geminiErr
+          geminiErr?.message || geminiErr
         );
       }
     }

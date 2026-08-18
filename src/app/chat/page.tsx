@@ -31,6 +31,7 @@ import { ChatContextDrawer } from '@/components/chat/ChatContextDrawer';
 import { ChatAIAssistantModal } from '@/components/chat/ChatAIAssistantModal';
 import { PinnedMessagesModal } from '@/components/chat/PinnedMessagesModal';
 import { DelegateTaskModal } from '@/components/modals/DelegateTaskModal';
+import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -47,6 +48,11 @@ function ChatContent() {
     activeConversationId,
     setActiveConversationId,
     areas,
+    tasks,
+    notifications,
+    delegateTask,
+    updateTaskStatus,
+    playSound,
   } = useNexus();
 
   // Drawers & Modals State
@@ -57,6 +63,7 @@ function ChatContent() {
   const [isPinnedModalOpen, setIsPinnedModalOpen] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showPrivateModal, setShowPrivateModal] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
   // Task Delegation Pre-fill Modal State
   const [isDelegateTaskOpen, setIsDelegateTaskOpen] = useState(false);
@@ -113,7 +120,74 @@ function ChatContent() {
   // Send message handler
   const handleSendMessage = async (text: string, attachments?: MessageAttachment[]) => {
     if (!activeConversationId) return;
-    await sendMessage(activeConversationId, text, 'TEXT', attachments);
+    const targetConvId = activeConversationId;
+    await sendMessage(targetConvId, text, 'TEXT', attachments);
+
+    const isAIChat = targetConvId === 'conv-ai-copilot';
+    const isAIMention =
+      text.toLowerCase().includes('@nexus') ||
+      text.toLowerCase().includes('@ia') ||
+      text.toLowerCase().startsWith('/ia') ||
+      text.toLowerCase().startsWith('/gemini');
+
+    if (isAIChat || isAIMention) {
+      setIsAiTyping(true);
+      try {
+        const geminiKey = getStoredGeminiKey();
+        const geminiModel = getStoredGeminiModel();
+        const aiProfile = profiles.find((p) => p.id === 'usr-nexus-ai') || {
+          id: 'usr-nexus-ai',
+          name: 'Nexus AI Copilot',
+          email: 'ai@nexus.com.br',
+          role: 'GERENTE' as const,
+          department: 'Nexus Intelligence',
+          active: true,
+        };
+
+        const cleanedPrompt = text.replace(/@nexus|@ia|\/ia|\/gemini/gi, '').trim() || text;
+
+        const res = await fetch('/api/ai/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+            ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
+          },
+          body: JSON.stringify({
+            message: cleanedPrompt,
+            history: (messages[targetConvId] || []).slice(-6).map((m) => ({
+              sender: m.sender_id === 'usr-nexus-ai' ? 'agent' : 'user',
+              text: decryptedMessagesMap[m.id] || m.content,
+            })),
+            context: {
+              currentUser,
+              tasks,
+              areas,
+              notifications,
+              conversations,
+              messages,
+            },
+          }),
+        });
+
+        if (res.ok) {
+          const aiData = await res.json();
+          if (aiData.actionTaken) {
+            if (aiData.actionTaken.type === 'TASK_CREATED') {
+              delegateTask(aiData.actionTaken.data);
+            } else if (aiData.actionTaken.type === 'TASK_UPDATED') {
+              updateTaskStatus(aiData.actionTaken.data.taskId, aiData.actionTaken.data.status);
+            }
+          }
+          await sendMessage(targetConvId, aiData.text || 'Comando processado com sucesso!', 'TEXT', undefined, aiProfile);
+          playSound('AI_READY');
+        }
+      } catch (aiErr) {
+        console.warn('Erro ao processar mensagem com o Nexus AI:', aiErr);
+      } finally {
+        setIsAiTyping(false);
+      }
+    }
   };
 
   // Handle Slash Command Trigger
@@ -363,6 +437,16 @@ function ChatContent() {
                   onCreateTaskFromMessage={handleCreateTaskFromMessage}
                 />
               ))
+            )}
+            {isAiTyping && (
+              <div className="flex items-center space-x-2.5 p-3 bg-[#EEF2EE]/60 dark:bg-[#0B120E] rounded-2xl border border-[#D5E0D7] dark:border-[#1E3125] max-w-xs animate-pulse my-2">
+                <div className="w-6 h-6 rounded-lg bg-[#1B3026] text-white flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                </div>
+                <span className="text-xs text-[#5E7567] dark:text-slate-300 font-medium">
+                  Nexus AI Copilot digitando...
+                </span>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

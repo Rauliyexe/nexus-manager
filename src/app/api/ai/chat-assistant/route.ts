@@ -17,6 +17,10 @@ export async function POST(req: NextRequest) {
       req.headers.get('x-gemini-api-key') ||
       body.geminiApiKey ||
       process.env.GEMINI_API_KEY;
+    const geminiModel =
+      req.headers.get('x-gemini-model') ||
+      body.geminiModel ||
+      process.env.GEMINI_MODEL;
 
     // ── 1. Se houver chave do Gemini, gera análise dinâmica com IA ──
     if (geminiKey) {
@@ -25,11 +29,12 @@ export async function POST(req: NextRequest) {
           mode as 'SUMMARY' | 'TASKS' | 'DRAFT',
           conversationTitle,
           messages,
-          geminiKey
+          geminiKey,
+          geminiModel
         );
         return NextResponse.json(result);
-      } catch (geminiErr) {
-        console.warn('Aviso: Falha na análise de chat via Gemini API. Usando gerador contextual local.', geminiErr);
+      } catch (geminiErr: any) {
+        console.warn('Aviso: Falha na análise de chat via Gemini API. Usando gerador contextual local.', geminiErr?.message || geminiErr);
       }
     }
 

@@ -13,7 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Conversation, Message } from '@/lib/types/nexus';
-import { getStoredGeminiKey } from '@/lib/services/geminiClient';
+import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
 
 interface ChatAIAssistantModalProps {
   isOpen: boolean;
@@ -63,11 +63,13 @@ export const ChatAIAssistantModal: React.FC<ChatAIAssistantModalProps> = ({
         }));
 
         const geminiKey = getStoredGeminiKey();
+        const geminiModel = getStoredGeminiModel();
         const res = await fetch('/api/ai/chat-assistant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+            ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
           },
           body: JSON.stringify({
             mode,

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { getStoredGeminiKey } from '@/lib/services/geminiClient';
+import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
 
 interface PersonalAgentDrawerProps {
   isOpen: boolean;
@@ -101,11 +101,13 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
 
     try {
       const geminiKey = getStoredGeminiKey();
+      const geminiModel = getStoredGeminiModel();
       const response = await fetch('/api/ai/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+          ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
         },
         body: JSON.stringify({
           message: textToSend.trim(),

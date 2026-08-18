@@ -3,7 +3,7 @@ import { AgentContext, AGENT_TOOLS, executeAgentTool } from './aiAgentService';
 const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
 /**
- * Converte as ferramentas do formato genérico/Anthropic para o formato aceito pelo Google Gemini API (FunctionDeclarations).
+ * Converte as ferramentas do formato genérico para o formato FunctionDeclarations aceito pelo Google Gemini.
  */
 function convertToolsToGeminiDeclarations() {
   return AGENT_TOOLS.map((tool) => {
@@ -18,16 +18,89 @@ function convertToolsToGeminiDeclarations() {
       };
     }
 
+    const parameters: any = {
+      type: 'OBJECT',
+      properties: formattedProperties,
+    };
+
+    if (tool.input_schema?.required && tool.input_schema.required.length > 0) {
+      parameters.required = tool.input_schema.required;
+    }
+
     return {
       name: tool.name,
       description: tool.description,
-      parameters: {
-        type: 'OBJECT',
-        properties: formattedProperties,
-        required: tool.input_schema?.required || [],
-      },
+      parameters,
     };
   });
+}
+
+/**
+ * Normaliza o histórico de mensagens para o formato estrito do Google Gemini:
+ * - Deve começar obrigatoriamente com o papel 'user'.
+ * - Os papéis devem alternar rigorosamente: 'user' -> 'model' -> 'user' -> 'model'.
+ * - Não permite papéis consecutivos repetidos.
+ */
+function buildGeminiContents(
+  message: string,
+  history: Array<{ sender: 'user' | 'agent'; text: string }>
+) {
+  const rawItems: Array<{ role: 'user' | 'model'; text: string }> = [];
+
+  // Filtra itens vazios e ignora a primeira mensagem se for do modelo sem pergunta anterior
+  const sliced = history.slice(-6);
+  for (const h of sliced) {
+    if (!h.text || !h.text.trim()) continue;
+    rawItems.push({
+      role: h.sender === 'user' ? 'user' : 'model',
+      text: h.text.trim(),
+    });
+  }
+
+  // Adiciona a mensagem atual do usuário
+  if (message && message.trim()) {
+    rawItems.push({
+      role: 'user',
+      text: message.trim(),
+    });
+  }
+
+  const normalizedContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+  for (const item of rawItems) {
+    if (normalizedContents.length === 0) {
+      // O Gemini exige que a primeira mensagem seja 'user'
+      if (item.role === 'user') {
+        normalizedContents.push({
+          role: 'user',
+          parts: [{ text: item.text }],
+        });
+      }
+    } else {
+      const lastIndex = normalizedContents.length - 1;
+      const lastRole = normalizedContents[lastIndex].role;
+
+      if (item.role === lastRole) {
+        // Concatena mensagens consecutivas do mesmo papel
+        normalizedContents[lastIndex].parts[0].text += `\n\n${item.text}`;
+      } else {
+        normalizedContents.push({
+          role: item.role,
+          parts: [{ text: item.text }],
+        });
+      }
+    }
+  }
+
+  // Se por qualquer razão estiver vazio, garante uma mensagem inicial do usuário
+  if (normalizedContents.length === 0) {
+    normalizedContents.push({
+      role: 'user',
+      parts: [{ text: message.trim() || 'Olá' }],
+    });
+  }
+
+  return normalizedContents;
 }
 
 /**
@@ -37,9 +110,10 @@ export async function runGeminiAgentInference(
   message: string,
   history: Array<{ sender: 'user' | 'agent'; text: string }>,
   context: AgentContext,
-  apiKey: string
+  apiKey: string,
+  preferredModel?: string
 ): Promise<{ text: string; toolsUsed: string[]; actionTaken?: any }> {
-  const modelName = DEFAULT_GEMINI_MODEL;
+  const modelName = preferredModel || DEFAULT_GEMINI_MODEL;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const systemInstruction = `Você é o Personal AI Copilot do usuário ${context.currentUser.name} (${context.currentUser.role} no departamento de ${context.currentUser.department || 'Geral'}) dentro do Command Center do Nexus Manager.
@@ -53,23 +127,7 @@ Diretrizes fundamentais:
 4. Responda em português brasileiro de forma executiva, profissional, formatando em markdown limpo (tabelas, listas com marcadores, destaques em negrito quando conveniente).
 5. Seja direto, conciso e proativo.`;
 
-  // Monta histórico de mensagens para o Gemini (roles 'user' e 'model')
-  const contents: any[] = [];
-
-  const recentHistory = history.slice(-6);
-  for (const h of recentHistory) {
-    contents.push({
-      role: h.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: h.text }],
-    });
-  }
-
-  // Mensagem atual do usuário
-  contents.push({
-    role: 'user',
-    parts: [{ text: message }],
-  });
-
+  const initialContents = buildGeminiContents(message, history);
   const toolsPayload = [
     {
       functionDeclarations: convertToolsToGeminiDeclarations(),
@@ -78,7 +136,7 @@ Diretrizes fundamentais:
 
   const toolsUsed: string[] = [];
   let actionTaken: any = undefined;
-  let currentContents = [...contents];
+  let currentContents: any[] = [...initialContents];
   let finalResponseText = '';
 
   // Loop de iterações para Function Calling (máximo 3 turnos para segurança)
@@ -126,7 +184,6 @@ Diretrizes fundamentais:
     }
 
     // Processa chamadas de função
-    // Adiciona a resposta do modelo no histórico
     currentContents.push({
       role: 'model',
       parts: modelParts,
@@ -145,11 +202,19 @@ Diretrizes fundamentais:
         actionTaken = toolResult.actionTaken;
       }
 
+      let parsedContent: any = toolResult.content;
+      try {
+        parsedContent = JSON.parse(toolResult.content);
+      } catch {
+        parsedContent = { output: toolResult.content };
+      }
+
       functionResponseParts.push({
         functionResponse: {
           name: fnName,
           response: {
-            result: toolResult.content,
+            name: fnName,
+            content: parsedContent,
           },
         },
       });
@@ -176,9 +241,10 @@ export async function generateGeminiChatAnalysis(
   mode: 'SUMMARY' | 'TASKS' | 'DRAFT',
   conversationTitle: string,
   channelMessages: Array<{ senderName: string; text: string; time?: string }>,
-  apiKey: string
+  apiKey: string,
+  preferredModel?: string
 ): Promise<{ content: string; tasks?: Array<{ title: string; description: string }> }> {
-  const modelName = DEFAULT_GEMINI_MODEL;
+  const modelName = preferredModel || DEFAULT_GEMINI_MODEL;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const formattedMessages = channelMessages
@@ -264,7 +330,6 @@ ${formattedMessages || '(Nenhuma mensagem recente encontrada)'}`;
         tasks: parsed.tasks || [],
       };
     } catch {
-      // Fallback simples se o JSON tiver wrapper markdown
       const cleaned = rawText.replace(/```json\n?|\n?```/g, '').trim();
       const parsed = JSON.parse(cleaned);
       return {
