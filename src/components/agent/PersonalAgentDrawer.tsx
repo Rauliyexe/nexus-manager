@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { getStoredGeminiKey } from '@/lib/services/geminiClient';
 
 interface PersonalAgentDrawerProps {
   isOpen: boolean;
@@ -99,9 +100,13 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
     setActiveTool('Consultando base do Command Center...');
 
     try {
+      const geminiKey = getStoredGeminiKey();
       const response = await fetch('/api/ai/agent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+        },
         body: JSON.stringify({
           message: textToSend.trim(),
           history: chatHistory,
@@ -182,7 +187,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
                   Personal AI Copilot
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-[#2C6E49] text-white text-[9px] font-mono font-bold uppercase">
-                  Claude Haiku
+                  Gemini Flash
                 </span>
               </div>
               <p className="text-[11px] text-[#5E7567] dark:text-slate-400 font-medium mt-0.5">

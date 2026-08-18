@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   ShieldCheck,
@@ -13,10 +13,25 @@ import {
   Send,
   Bell,
   Sliders,
+  Key,
+  Eye,
+  EyeOff,
+  Save,
+  Trash2,
+  ExternalLink,
+  Loader2,
+  Bot,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { SoundType } from '@/lib/services/soundService';
+import {
+  getStoredGeminiKey,
+  setStoredGeminiKey,
+  removeStoredGeminiKey,
+  getStoredGeminiModel,
+  setStoredGeminiModel,
+} from '@/lib/services/geminiClient';
 
 const SOUND_PREVIEWS: { label: string; type: SoundType; description: string; icon: React.FC<any> }[] = [
   { label: 'Envio de Mensagem', type: 'MESSAGE_SENT', description: 'Swoosh/pop suave e discreto (70ms)', icon: Send },
@@ -31,6 +46,89 @@ const SOUND_PREVIEWS: { label: string; type: SoundType; description: string; ico
 export default function SettingsPage() {
   const { currentUser, soundEnabled, toggleSound, playSound } = useNexus();
 
+  // Estado da chave Gemini para demonstrações no navegador
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
+  const [showKey, setShowKey] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    setApiKeyInput(getStoredGeminiKey());
+    setSelectedModel(getStoredGeminiModel());
+  }, []);
+
+  const handleSaveKey = () => {
+    setStoredGeminiKey(apiKeyInput);
+    setStoredGeminiModel(selectedModel);
+    setSavedSuccess(true);
+    setTestResult(null);
+    playSound('TASK_COMPLETED');
+    setTimeout(() => setSavedSuccess(false), 2500);
+  };
+
+  const handleRemoveKey = () => {
+    removeStoredGeminiKey();
+    setApiKeyInput('');
+    setTestResult(null);
+    setSavedSuccess(false);
+    playSound('MESSAGE_SENT');
+  };
+
+  const handleTestKey = async () => {
+    if (!apiKeyInput.trim()) {
+      setTestResult({ success: false, message: 'Digite ou cole uma chave antes de testar.' });
+      return;
+    }
+
+    setTestingConnection(true);
+    setTestResult(null);
+
+    try {
+      const res = await fetch('/api/ai/agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKeyInput.trim(),
+        },
+        body: JSON.stringify({
+          message: 'Olá, teste de conexão executivo do Nexus Manager.',
+          history: [],
+          context: {
+            currentUser,
+            tasks: [],
+            areas: [],
+            notifications: [],
+            conversations: [],
+            messages: {},
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setTestResult({
+          success: true,
+          message: 'Conexão com Google Gemini estabelecida com sucesso! IA operacional.',
+        });
+        playSound('AI_READY');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setTestResult({
+          success: false,
+          message: data.error || 'A API retornou erro. Verifique se a chave está ativa no Google AI Studio.',
+        });
+      }
+    } catch {
+      setTestResult({
+        success: false,
+        message: 'Falha de rede ao conectar com o endpoint da IA.',
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6 font-sans">
       {/* Header */}
@@ -40,7 +138,7 @@ export default function SettingsPage() {
           <span>Configurações & Preferências do Sistema</span>
         </h1>
         <p className="text-xs text-[#5E7567] dark:text-slate-400 mt-1">
-          Dados do usuário ativo, perfil corporativo, preferências de áudio e segurança.
+          Dados do usuário ativo, perfil corporativo, integração de Inteligência Artificial e preferências.
         </p>
       </div>
 
@@ -58,6 +156,142 @@ export default function SettingsPage() {
               {currentUser.department || 'Copper Group'}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* ── Google Gemini AI Settings (Demonstration Key) ── */}
+      <div className="bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] p-6 rounded-2xl card-shadow space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D5E0D7]/60 dark:border-[#1E3125] pb-4">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#1B3026] text-white flex items-center justify-center shadow-xs">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100">
+                  Google Gemini AI (Chave de Demonstração)
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-[#2C6E49] text-white text-[9px] font-mono font-bold uppercase">
+                  Free Tier / AI Studio
+                </span>
+              </div>
+              <p className="text-xs text-[#5E7567] dark:text-slate-400 mt-0.5">
+                Alimente o Personal Agent e o Assistente de Canais com a API gratuita do Google.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#2C6E49] dark:text-[#76B38B] hover:underline"
+          >
+            <span>Obter chave gratuita</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        <div className="p-3.5 bg-[#EEF2EE]/50 dark:bg-[#0B120E] rounded-xl border border-[#D5E0D7] dark:border-[#1E3125] text-xs text-[#5E7567] dark:text-slate-300">
+          💡 <strong className="text-[#111D15] dark:text-slate-100">Como funciona:</strong> A chave inserida aqui é salva apenas na memória local do seu navegador (<code className="font-mono bg-white dark:bg-[#121D16] px-1 py-0.5 rounded border border-[#D5E0D7] dark:border-[#1E3125]">localStorage</code>), permitindo demonstrações sem expor credenciais no Git.
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-[#111D15] dark:text-slate-200 mb-1.5 flex items-center space-x-1.5">
+              <Key className="w-3.5 h-3.5 text-[#2C6E49]" />
+              <span>Chave de API do Google Gemini (API Key)</span>
+            </label>
+
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="Ex: AIzaSy..."
+                className="w-full px-3.5 py-2.5 pr-10 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs font-mono text-[#111D15] dark:text-slate-100 placeholder:text-[#5E7567]/60 focus:outline-hidden focus:ring-2 focus:ring-[#2C6E49] transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5E7567] hover:text-[#111D15] dark:hover:text-white cursor-pointer"
+                title={showKey ? 'Ocultar chave' : 'Exibir chave'}
+              >
+                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <div>
+              <label className="block text-xs font-bold text-[#111D15] dark:text-slate-200 mb-1.5 flex items-center space-x-1.5">
+                <Bot className="w-3.5 h-3.5 text-[#2C6E49]" />
+                <span>Modelo Selecionado</span>
+              </label>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs font-medium text-[#111D15] dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#2C6E49]"
+              >
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Ultrarrápido & Econômico)</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Última Geração)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2 sm:self-end pt-1">
+              <button
+                type="button"
+                onClick={handleSaveKey}
+                className="flex-1 px-4 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{savedSuccess ? 'Salvo!' : 'Salvar no Navegador'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestKey}
+                disabled={testingConnection}
+                className="px-3 py-2 bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] hover:bg-[#D5E0D7] rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                title="Testar requisição"
+              >
+                {testingConnection ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                <span>Testar</span>
+              </button>
+
+              {apiKeyInput && (
+                <button
+                  type="button"
+                  onClick={handleRemoveKey}
+                  className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer"
+                  title="Remover chave salva"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {testResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs flex items-start space-x-2 animate-in fade-in duration-150 ${
+                testResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+              }`}
+            >
+              {testResult.success ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+              )}
+              <p className="font-medium">{testResult.message}</p>
+            </div>
+          )}
         </div>
       </div>
 
