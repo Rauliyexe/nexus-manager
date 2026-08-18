@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Search, Sun, Moon, ChevronRight, Sparkles } from 'lucide-react';
+import { Bell, Search, Sun, Moon, ChevronRight, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { USER_ROLE_LABELS } from '@/lib/types/nexus';
@@ -14,19 +14,17 @@ interface TopbarProps {
 }
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
-  '/hub':              { title: 'Dashboard',              sub: 'Visão geral do desempenho e indicadores' },
-  '/areas':            { title: 'Projetos',               sub: 'Áreas e departamentos operacionais' },
-  '/dashboard':        { title: 'Indicadores',            sub: 'Métricas e KPIs consolidados' },
-  '/reports':          { title: 'Relatórios',             sub: 'Relatórios executivos e gerenciais' },
-  '/tasks':            { title: 'Tarefas',                sub: 'Gestão de tarefas e chamados' },
-  '/chat':             { title: 'Equipe',                 sub: 'Conversas e comunicação interna' },
-  '/obligations':      { title: 'Documentos',             sub: 'Obrigações e rituais operacionais' },
-  '/alerts':           { title: 'Alertas',                sub: 'Central de alertas e incidentes' },
-  '/financial':        { title: 'Financeiro',             sub: 'Dashboard financeiro e DRE' },
-  '/terminal':         { title: 'Terminal Bloomberg',     sub: 'Dados de mercado em tempo real' },
-  '/ti-console':       { title: 'Console TI',             sub: 'Painel técnico e gestão IAM' },
-  '/settings':         { title: 'Configurações',          sub: 'Preferências e administração' },
-  '/admin/simulacao':  { title: 'Simulador Admin',        sub: 'Simulação de perfis e permissões' },
+  '/dashboard': { title: 'Indicadores', sub: 'Visão Geral & Matriz de Risco' },
+  '/hub': { title: 'Tarefas', sub: 'Gestão Operacional de Demandas' },
+  '/areas': { title: 'Projetos', sub: 'Workspaces & Acompanhamento de Setores' },
+  '/obligations': { title: 'Documentos', sub: 'Controle de Obrigações & Rituais' },
+  '/alerts': { title: 'Alertas', sub: 'Central de Notificações & Incidentes' },
+  '/financial': { title: 'Financeiro', sub: 'Telemetria de Mercado & Margens' },
+  '/chat': { title: 'Chat', sub: 'Comunicação Corporativa Criptografada' },
+  '/tasks': { title: 'Chamados', sub: 'Central de Suporte & Incidentes' },
+  '/ti-console': { title: 'Painel de TI', sub: 'Governança & Aprovações de Acesso' },
+  '/admin/simulacao': { title: 'Simulador', sub: 'Eventos de Demonstração' },
+  '/settings': { title: 'Configurações', sub: 'Preferências do Sistema & Perfil' },
 };
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -35,7 +33,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onToggleAgentDrawer,
 }) => {
   const pathname = usePathname();
-  const { currentUser, profiles, switchUser, notifications, theme, toggleTheme } = useNexus();
+  const { currentUser, profiles, switchUser, notifications, theme, toggleTheme, soundEnabled, toggleSound } = useNexus();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -95,6 +93,20 @@ export const Topbar: React.FC<TopbarProps> = ({
           />
           <Search className="w-3.5 h-3.5 text-[#5E7567] absolute left-2.5 top-2.5 pointer-events-none" />
         </div>
+
+        {/* Sound Toggle (Mute/Unmute) */}
+        <button
+          onClick={toggleSound}
+          className="p-2 rounded-xl bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] text-[#3B4F43] dark:text-slate-300 hover:border-[#1B3026] dark:hover:border-[#4D7C5D] transition-all cursor-pointer"
+          title={soundEnabled ? 'Silenciar Áudio' : 'Ativar Sons do Sistema'}
+          aria-label="Controle de Áudio"
+        >
+          {soundEnabled ? (
+            <Volume2 className="w-4 h-4 text-[#1B3026] dark:text-[#76B38B]" />
+          ) : (
+            <VolumeX className="w-4 h-4 text-[#5E7567]" />
+          )}
+        </button>
 
         {/* Theme Toggle */}
         <button

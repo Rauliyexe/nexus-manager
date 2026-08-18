@@ -31,6 +31,7 @@ import {
   UserRole,
 } from '../types/nexus';
 import { encryptMessage } from '../crypto/encryptMessage';
+import { soundService, SoundType } from '../services/soundService';
 
 // Extended Mock Financial Dataset (Bloomberg Terminal Telemetry)
 const SEED_FINANCIAL_METRICS: FinancialMetrics = {
@@ -799,6 +800,9 @@ interface NexusContextType {
   resolveAlert: (alertId: string) => void;
   markNotificationRead: (id: string) => void;
   runSimulationEvent: (event: '07:00' | '16:30' | '17:00') => void;
+  soundEnabled: boolean;
+  toggleSound: () => void;
+  playSound: (type: SoundType) => void;
 }
 
 const NexusContext = createContext<NexusContextType | undefined>(undefined);
@@ -824,6 +828,26 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(newTheme);
   };
+
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    setSoundEnabled(!soundService.getIsMuted());
+  }, []);
+
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    soundService.setMuted(!newState);
+    if (newState) {
+      soundService.play('BUTTON_CLICK');
+    }
+  };
+
+  const playSound = (type: SoundType) => {
+    soundService.play(type);
+  };
+
   const [profiles, setProfiles] = useState<Profile[]>(SEED_PROFILES);
   const [currentUser, setCurrentUser] = useState<Profile>(SEED_PROFILES[0]);
   const [areas, setAreas] = useState<Area[]>(SEED_AREAS);
@@ -885,6 +909,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setAppMode = (newMode: AppMode) => {
     if (newMode === appMode) return;
+    soundService.play('MODE_SWITCH');
     setIsTransitioningMode(true);
     setTimeout(() => {
       setAppModeState(newMode);
@@ -1009,6 +1034,11 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     await sendMessage(areaConvId, systemText, 'SYSTEM');
+    if (status === 'RED') {
+      soundService.play('CRITICAL_ALERT');
+    } else {
+      soundService.play('TASK_COMPLETED');
+    }
   };
 
   const createObligation = (obData: Omit<Obligation, 'id' | 'created_at' | 'updated_at'>) => {
@@ -1059,6 +1089,10 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setConversations((prev) =>
       prev.map((c) => (c.id === conversationId ? { ...c, lastMessage: newMsg } : c))
     );
+
+    if (messageType !== 'SYSTEM') {
+      soundService.play('MESSAGE_SENT');
+    }
   };
 
   const togglePinMessage = (conversationId: string, messageId: string) => {
@@ -1113,6 +1147,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { ...m, reactions: newReactions };
       }),
     }));
+    soundService.play('BUTTON_CLICK');
   };
 
   const sendThreadReply = async (
@@ -1144,6 +1179,8 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
       }),
     }));
+
+    soundService.play('MESSAGE_SENT');
   };
 
   const deleteMessage = (conversationId: string, messageId: string) => {
@@ -1259,6 +1296,9 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           );
         }
       });
+      soundService.play('CRITICAL_ALERT');
+    } else if (event === '16:30') {
+      soundService.play('CRITICAL_ALERT');
     }
   };
 
@@ -1363,6 +1403,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: nowISO,
     };
     setNotifications((prev) => [notifItem, ...prev]);
+    soundService.play('TASK_CREATED');
 
     return newTask;
   };
@@ -1413,6 +1454,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: nowISO,
     };
     setNotifications((prev) => [notifItem, ...prev]);
+    soundService.play('TASK_CREATED');
 
     return newTicket;
   };
@@ -1584,6 +1626,12 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return t;
       })
     );
+
+    if (status === 'COMPLETED') {
+      soundService.play('TASK_COMPLETED');
+    } else {
+      soundService.play('BUTTON_CLICK');
+    }
   };
 
   const addTaskComment = (taskId: string, content: string) => {
@@ -1694,6 +1742,9 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resolveAlert,
         markNotificationRead,
         runSimulationEvent,
+        soundEnabled,
+        toggleSound,
+        playSound,
       }}
     >
       {children}

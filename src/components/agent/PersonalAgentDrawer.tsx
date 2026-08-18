@@ -55,6 +55,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
     messages,
     delegateTask,
     updateTaskStatus,
+    playSound,
   } = useNexus();
 
   const [inputMessage, setInputMessage] = useState('');
@@ -140,6 +141,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
       };
 
       setChatHistory((prev) => [...prev, agentMsg]);
+      playSound('AI_READY');
     } catch (err) {
       const errorMsg: AgentChatMessage = {
         id: `err-${Date.now()}`,
