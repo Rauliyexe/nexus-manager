@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Hash,
   User,
+  X,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { Conversation } from '@/lib/types/nexus';
@@ -21,12 +22,18 @@ interface ChatSidebarProps {
   onOpenPrivateModal: () => void;
   onOpenGroupModal: () => void;
   onOpenAIAssistant: () => void;
+  onSelectConversation?: (convId: string) => void;
+  onCloseMobile?: () => void;
+  isMobile?: boolean;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onOpenPrivateModal,
   onOpenGroupModal,
   onOpenAIAssistant,
+  onSelectConversation,
+  onCloseMobile,
+  isMobile = false,
 }) => {
   const {
     conversations,
@@ -69,10 +76,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const groupConversations = filteredConversations.filter((c) => c.type === 'GROUP');
   const privateConversations = filteredConversations.filter((c) => c.type === 'PRIVATE');
 
+  const handleSelect = (convId: string) => {
+    setActiveConversationId(convId);
+    onSelectConversation?.(convId);
+    onCloseMobile?.();
+  };
+
   return (
-    <div className="w-80 border-r border-[#D5E0D7] dark:border-[#1E3125] flex flex-col bg-[#EEF2EE]/60 dark:bg-[#0B120E] shrink-0 select-none h-full">
+    <div className="w-full flex flex-col bg-[#EEF2EE]/60 dark:bg-[#0B120E] select-none h-full border-r border-[#D5E0D7] dark:border-[#1E3125]">
       {/* Top Header & Search */}
-      <div className="p-3.5 border-b border-[#D5E0D7] dark:border-[#1E3125] space-y-3 bg-white/50 dark:bg-[#121D16]/50">
+      <div className="p-3.5 border-b border-[#D5E0D7] dark:border-[#1E3125] space-y-3 bg-white/50 dark:bg-[#121D16]/50 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="w-7 h-7 rounded-lg bg-[#1B3026] text-white flex items-center justify-center font-bold text-xs shadow-xs">
@@ -103,6 +116,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="md:hidden p-1.5 rounded-lg text-[#5E7567] hover:text-[#111D15] dark:hover:text-white hover:bg-[#D5E0D7] dark:hover:bg-[#1C2E24] transition-colors cursor-pointer"
+                title="Fechar Conversas"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -165,7 +187,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               return (
                 <button
                   key={conv.id}
-                  onClick={() => setActiveConversationId(conv.id)}
+                  onClick={() => handleSelect(conv.id)}
                   className={`w-full text-left p-2.5 rounded-xl flex items-start space-x-2.5 transition-all cursor-pointer ${
                     isActive
                       ? 'bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] card-shadow font-semibold'
@@ -229,7 +251,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               return (
                 <button
                   key={conv.id}
-                  onClick={() => setActiveConversationId(conv.id)}
+                  onClick={() => handleSelect(conv.id)}
                   className={`w-full text-left p-2.5 rounded-xl flex items-start space-x-2.5 transition-all cursor-pointer ${
                     isActive
                       ? 'bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] card-shadow font-semibold'
@@ -288,7 +310,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               return (
                 <button
                   key={conv.id}
-                  onClick={() => setActiveConversationId(conv.id)}
+                  onClick={() => handleSelect(conv.id)}
                   className={`w-full text-left p-2.5 rounded-xl flex items-start space-x-2.5 transition-all cursor-pointer ${
                     isActive
                       ? 'bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] card-shadow font-semibold'

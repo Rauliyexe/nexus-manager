@@ -47,7 +47,7 @@ export const ChatContextDrawer: React.FC<ChatContextDrawerProps> = ({
     .filter(Boolean);
 
   return (
-    <div className="w-80 sm:w-96 border-l border-[#D5E0D7] dark:border-[#1E3125] bg-white dark:bg-[#121D16] flex flex-col h-full z-30 card-shadow select-none animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-96 sm:relative border-l border-[#D5E0D7] dark:border-[#1E3125] bg-white dark:bg-[#121D16] flex flex-col h-full z-40 card-shadow select-none animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="p-3.5 border-b border-[#D5E0D7] dark:border-[#1E3125] bg-[#EEF2EE]/60 dark:bg-[#0B120E] flex items-center justify-between">
         <div className="flex items-center space-x-2">

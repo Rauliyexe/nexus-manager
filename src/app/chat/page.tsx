@@ -50,6 +50,7 @@ function ChatContent() {
   } = useNexus();
 
   // Drawers & Modals State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activeThreadMessage, setActiveThreadMessage] = useState<Message | null>(null);
   const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
@@ -174,47 +175,90 @@ function ChatContent() {
 
   return (
     <div className="h-[calc(100vh-5.5rem)] flex bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl overflow-hidden card-shadow font-sans relative">
-      {/* ── 1. Sidebar Esquerda de Conversas ── */}
-      <ChatSidebar
-        onOpenPrivateModal={() => setShowPrivateModal(true)}
-        onOpenGroupModal={() => setShowGroupModal(true)}
-        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
-      />
+      {/* ── 1. Sidebar Desktop (Esquerda fixa) ── */}
+      <div className="hidden md:flex md:w-80 shrink-0 h-full">
+        <ChatSidebar
+          onOpenPrivateModal={() => setShowPrivateModal(true)}
+          onOpenGroupModal={() => setShowGroupModal(true)}
+          onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+        />
+      </div>
+
+      {/* ── 1b. Mobile Drawer de Conversas (Abre e fecha em celulares) ── */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          {/* Slide-in Panel */}
+          <div className="relative z-10 w-[85%] max-w-xs h-full bg-white dark:bg-[#0B120E] shadow-2xl border-r border-[#D5E0D7] dark:border-[#1E3125] flex flex-col animate-in slide-in-from-left duration-200">
+            <ChatSidebar
+              onOpenPrivateModal={() => {
+                setIsMobileSidebarOpen(false);
+                setShowPrivateModal(true);
+              }}
+              onOpenGroupModal={() => {
+                setIsMobileSidebarOpen(false);
+                setShowGroupModal(true);
+              }}
+              onOpenAIAssistant={() => {
+                setIsMobileSidebarOpen(false);
+                setIsAIAssistantOpen(true);
+              }}
+              onSelectConversation={() => setIsMobileSidebarOpen(false)}
+              onCloseMobile={() => setIsMobileSidebarOpen(false)}
+              isMobile
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── 2. Área Central de Mensagens ── */}
       {currentConv ? (
         <div className="flex-1 flex flex-col bg-white dark:bg-[#121D16] min-w-0 h-full">
           {/* Header da Conversa */}
-          <div className="px-5 py-3.5 border-b border-[#D5E0D7] dark:border-[#1E3125] flex items-center justify-between bg-white/70 dark:bg-[#0B120E]/80 backdrop-blur-sm z-10 shrink-0">
-            <div className="flex items-center space-x-3 min-w-0 pr-2">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-2xl bg-[#1B3026] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+          <div className="px-3.5 sm:px-5 py-3 border-b border-[#D5E0D7] dark:border-[#1E3125] flex items-center justify-between bg-white/70 dark:bg-[#0B120E]/80 backdrop-blur-sm z-10 shrink-0">
+            <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+              {/* Mobile Toggle Button for Sidebar */}
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="md:hidden p-2 -ml-1 rounded-xl text-[#111D15] dark:text-slate-100 hover:bg-[#EEF2EE] dark:hover:bg-[#1C2E24] transition-colors cursor-pointer shrink-0 flex items-center justify-center border border-[#D5E0D7] dark:border-[#1E3125]"
+                title="Abrir Lista de Conversas"
+                aria-label="Abrir Lista de Conversas"
+              >
+                <ArrowLeft className="w-4 h-4 text-[#1B3026] dark:text-[#76B38B]" />
+              </button>
+
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#1B3026] text-white flex items-center justify-center font-bold text-sm shadow-xs">
                   {currentConv.type === 'AREA' ? (
-                    <Building2 className="w-5 h-5" />
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : currentConv.type === 'GROUP' ? (
-                    <Users className="w-5 h-5" />
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
                     <UserAvatar name={currentConv.title || 'U'} size="md" />
                   )}
                 </div>
-                <span className="w-3 h-3 rounded-full bg-[#2C6E49] border-2 border-white dark:border-[#121D16] absolute -bottom-0.5 -right-0.5" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#2C6E49] border-2 border-white dark:border-[#121D16] absolute -bottom-0.5 -right-0.5" />
               </div>
 
               <div className="min-w-0">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100 truncate">
+                <div className="flex items-center space-x-1.5 sm:space-x-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-[#111D15] dark:text-slate-100 truncate">
                     {currentConv.title}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] text-[9px] font-mono font-bold uppercase">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] text-[9px] font-mono font-bold uppercase shrink-0">
                     {currentConv.type}
                   </span>
                 </div>
-                <p className="text-[11px] text-[#5E7567] dark:text-slate-400 mt-0.5 truncate">
+                <p className="text-[10px] sm:text-[11px] text-[#5E7567] dark:text-slate-400 mt-0.5 truncate">
                   {currentConv.type === 'AREA'
-                    ? 'Canal oficial vinculado ao nó operacional e rituais diários'
+                    ? 'Canal vinculado ao nó operacional'
                     : currentConv.type === 'GROUP'
-                    ? 'Comitê executivo multiprofissional'
-                    : 'Canal seguro privado de comunicação direta'}
+                    ? 'Comitê executivo'
+                    : 'Canal seguro privado'}
                 </p>
               </div>
             </div>
@@ -330,10 +374,22 @@ function ChatContent() {
           />
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-[#5E7567] text-xs font-medium space-y-2">
-          <MessageSquare className="w-10 h-10 text-[#D5E0D7] dark:text-[#1E3125]" />
-          <p>Selecione uma conversa para iniciar.</p>
-        </div>
+        <>
+          {/* Mobile view when no conversation is active: show ChatSidebar full screen */}
+          <div className="flex-1 md:hidden h-full">
+            <ChatSidebar
+              onOpenPrivateModal={() => setShowPrivateModal(true)}
+              onOpenGroupModal={() => setShowGroupModal(true)}
+              onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+            />
+          </div>
+
+          {/* Desktop empty placeholder */}
+          <div className="hidden md:flex flex-1 flex-col items-center justify-center text-[#5E7567] text-xs font-medium space-y-2">
+            <MessageSquare className="w-10 h-10 text-[#D5E0D7] dark:text-[#1E3125]" />
+            <p>Selecione uma conversa para iniciar.</p>
+          </div>
+        </>
       )}
 
       {/* ── 3. Painel de Threads Lateral (Drawer) ── */}
