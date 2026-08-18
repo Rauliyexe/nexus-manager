@@ -31,22 +31,27 @@ export default function ReportsPage() {
   }).toUpperCase();
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto p-4 sm:p-6 font-sans">
+    <div className="space-y-5 max-w-7xl mx-auto p-4 sm:p-6 pb-8 font-sans">
       {/* Header Strip */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1A281E] dark:text-slate-100 tracking-tight">
-            Relatórios & Indicadores
-          </h1>
-          <p className="text-sm text-[#5C6E62] dark:text-slate-400 mt-0.5">
-            Consolidado diário, semanal, quinzenal e mensal com auditoria operacional
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#111D15] dark:text-slate-100 tracking-tight">
+              Relatórios & Auditoria Operacional
+            </h1>
+            <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#3B4F43] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] font-mono text-[9px] font-bold tracking-wider uppercase">
+              DEMO · CONSOLIDADO
+            </span>
+          </div>
+          <p className="text-sm text-[#5E7567] dark:text-slate-400 mt-0.5">
+            Consolidado diário, semanal, quinzenal e mensal com auditoria de conformidade
           </p>
         </div>
 
         {/* Action Export Button */}
         <button
           onClick={() => alert('Relatório exportado em formato CSV / Excel com sucesso!')}
-          className="px-4 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer self-start sm:self-auto shrink-0"
+          className="px-4 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
         >
           <Download className="w-4 h-4" />
           <span>Exportar Relatório (CSV)</span>
@@ -271,6 +276,12 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      {/* Institutional Demo Footnote */}
+      <div className="p-3.5 bg-[#EEF2EE]/40 dark:bg-[#121D16]/40 border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl flex items-center justify-between text-[11px] text-[#5E7567] dark:text-slate-400 font-medium">
+        <span>Ambiente de Demonstração • Consolidação e auditoria operacional geradas para fins de apresentação à diretoria</span>
+        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP REPORTING</span>
+      </div>
     </div>
   );
 }

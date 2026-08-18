@@ -262,6 +262,25 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
                     {msg.text}
                   </div>
 
+                  {/* Executed Action Badge */}
+                  {msg.actionTaken && (
+                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-xl space-y-0.5 text-xs text-emerald-950 dark:text-emerald-200 card-shadow animate-in fade-in duration-150">
+                      <div className="flex items-center space-x-1.5 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="font-mono text-[10px] uppercase tracking-wider">
+                          {msg.actionTaken.type === 'TASK_CREATED'
+                            ? 'AÇÃO EXECUTADA · Tarefa Criada'
+                            : 'AÇÃO EXECUTADA · Tarefa Atualizada'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-800 dark:text-emerald-300 pl-5">
+                        {msg.actionTaken.type === 'TASK_CREATED'
+                          ? `Demanda "${msg.actionTaken.data?.title}" registrada no Command Center.`
+                          : `Status da tarefa atualizado para ${msg.actionTaken.data?.status}.`}
+                      </p>
+                    </div>
+                  )}
+
                   <span className={`text-[9px] font-mono text-[#5E7567] block ${isUser ? 'text-right' : 'text-left'}`}>
                     {msg.timestamp}
                   </span>

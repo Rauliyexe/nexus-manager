@@ -95,7 +95,7 @@ export const BloombergTerminal: React.FC = () => {
       <div className="bg-slate-950 border border-amber-500/40 p-2.5 rounded flex items-center justify-between overflow-x-auto whitespace-nowrap text-[11px] font-bold tracking-tight gap-3">
         <div className="flex items-center space-x-4">
           <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[10px]">
-            NEXUS TERMINAL
+            COPPER GROUP TERMINAL
           </span>
           <span className="text-emerald-400">LME COPPER: ${financialMetrics.copperSpotUSD.toLocaleString()}/t (+1.8%)</span>
           <span className="text-amber-300">USD/BRL: R$ {financialMetrics.usdBrlRate}</span>

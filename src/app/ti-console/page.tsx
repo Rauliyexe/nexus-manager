@@ -93,8 +93,8 @@ export default function TIConsolePage() {
               <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono uppercase tracking-wider">
                 CONSOLE TÉCNICO DE TI & GOVERNANÇA IAM
               </h1>
-              <span className="px-2 py-0.5 rounded-md bg-[#4D7C5D]/15 text-[#4D7C5D] dark:text-[#76B38B] font-mono text-[10px] font-bold border border-[#4D7C5D]/30">
-                SISTEMA OPERACIONAL
+              <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#3B4F43] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] font-mono text-[9px] font-bold tracking-wider uppercase">
+                DEMO · GOVERNANÇA
               </span>
             </div>
             <p className="text-[11px] text-slate-600 dark:text-slate-400 font-sans">
@@ -478,6 +478,12 @@ export default function TIConsolePage() {
           </div>
         </div>
       )}
+
+      {/* Institutional Demo Footnote */}
+      <div className="p-3.5 bg-[#EEF2EE]/40 dark:bg-[#121D16]/40 border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl flex items-center justify-between text-[11px] text-[#5E7567] dark:text-slate-400 font-medium">
+        <span>Ambiente de Demonstração • Painel de governança IAM e elevação de privilégios para apresentação à diretoria</span>
+        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP IAM CONTROL</span>
+      </div>
     </div>
   );
 }

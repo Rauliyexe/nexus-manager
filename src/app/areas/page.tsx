@@ -25,11 +25,16 @@ export default function AreasPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#111D15] dark:text-slate-100 tracking-tight">
-            Projetos & Áreas
-          </h1>
-          <p className="text-sm text-[#3B4F43] dark:text-slate-400 mt-0.5">
-            {areas.length} áreas operacionais • Gestores, rituais e status
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#111D15] dark:text-slate-100 tracking-tight">
+              Projetos & Setores Operacionais
+            </h1>
+            <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#3B4F43] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] font-mono text-[9px] font-bold tracking-wider uppercase">
+              DEMO · PROJETOS
+            </span>
+          </div>
+          <p className="text-sm text-[#5E7567] dark:text-slate-400 mt-0.5">
+            {areas.length} áreas operacionais • Gestores, rituais e status em tempo real
           </p>
         </div>
 
@@ -179,6 +184,12 @@ export default function AreasPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Institutional Demo Footnote */}
+      <div className="p-3.5 bg-[#EEF2EE]/40 dark:bg-[#121D16]/40 border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl flex items-center justify-between text-[11px] text-[#5E7567] dark:text-slate-400 font-medium">
+        <span>Ambiente de Demonstração • Workspaces e status setoriais demonstrativos para apresentação à diretoria</span>
+        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP PROJECTS</span>
       </div>
     </div>
   );

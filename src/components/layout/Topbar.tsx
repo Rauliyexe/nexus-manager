@@ -56,12 +56,15 @@ export const Topbar: React.FC<TopbarProps> = ({
           </span>
         </div>
 
-        {/* Desktop: page title + breadcrumb */}
+        {/* Desktop: page title + breadcrumb + demo badge */}
         <div className="hidden md:block min-w-0">
-          <div className="flex items-center space-x-1.5 text-xs text-[#3B4F43] dark:text-slate-400">
+          <div className="flex items-center space-x-2 text-xs">
             <span className="font-semibold text-[#1B3026] dark:text-[#76B38B]">Copper Group</span>
             <ChevronRight className="w-3 h-3 text-[#5E7567]" />
             <span className="font-bold text-[#111D15] dark:text-slate-100">{pageMeta.title}</span>
+            <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#3B4F43] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] font-mono text-[9px] font-bold tracking-wider uppercase ml-1">
+              DEMO · AMBIENTE DE DEMONSTRAÇÃO
+            </span>
           </div>
           <p className="text-xs text-[#5E7567] dark:text-slate-400 mt-0.5 hidden lg:block truncate max-w-sm">
             {pageMeta.sub}

@@ -256,6 +256,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Institutional Demo Footnote */}
+      <div className="p-3.5 bg-[#EEF2EE]/40 dark:bg-[#121D16]/40 border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl flex items-center justify-between text-[11px] text-[#5E7567] dark:text-slate-400 font-medium">
+        <span>Ambiente de Demonstração Executiva • Indicadores operacionais sintetizados para apresentação</span>
+        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP COMMAND CENTER</span>
+      </div>
     </div>
   );
 }
