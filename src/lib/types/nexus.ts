@@ -106,6 +106,19 @@ export interface Conversation {
   lastMessage?: Message;
 }
 
+export interface MessageAttachment {
+  name: string;
+  size: string;
+  type: 'PDF' | 'IMAGE' | 'DOC' | 'SHEET' | 'FILE';
+  url?: string;
+}
+
+export interface MessageReaction {
+  emoji: string;
+  count: number;
+  users: string[]; // user names or IDs
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -114,6 +127,13 @@ export interface Message {
   content: string; // Plaintext or Encrypted format
   message_type: MessageType;
   created_at: string;
+  pinned?: boolean;
+  reactions?: MessageReaction[];
+  attachments?: MessageAttachment[];
+  threadCount?: number;
+  parentMessageId?: string;
+  threadReplies?: Message[];
+  edited?: boolean;
 }
 
 export interface NotificationItem {

@@ -6,16 +6,31 @@ import {
   MessageSquare,
   Users,
   Building2,
-  Plus,
-  Send,
   Search,
-  ShieldCheck,
   Lock,
+  Pin,
+  Sparkles,
+  Info,
+  ChevronRight,
+  MoreVertical,
+  CheckSquare,
+  Plus,
+  ArrowLeft,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { decryptMessage } from '@/lib/crypto/decryptMessage';
+import { Message, MessageAttachment } from '@/lib/types/nexus';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { Message } from '@/lib/types/nexus';
+
+// Specialized Chat Components
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { ChatMessageItem } from '@/components/chat/ChatMessageItem';
+import { ChatComposer } from '@/components/chat/ChatComposer';
+import { ChatThreadDrawer } from '@/components/chat/ChatThreadDrawer';
+import { ChatContextDrawer } from '@/components/chat/ChatContextDrawer';
+import { ChatAIAssistantModal } from '@/components/chat/ChatAIAssistantModal';
+import { PinnedMessagesModal } from '@/components/chat/PinnedMessagesModal';
+import { DelegateTaskModal } from '@/components/modals/DelegateTaskModal';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -31,19 +46,34 @@ function ChatContent() {
     createPrivateConversation,
     activeConversationId,
     setActiveConversationId,
+    areas,
   } = useNexus();
 
-  const [chatSearch, setChatSearch] = useState('');
-  const [inputText, setInputText] = useState('');
-  const [decryptedMessagesMap, setDecryptedMessagesMap] = useState<Record<string, string>>({});
-
+  // Drawers & Modals State
+  const [activeThreadMessage, setActiveThreadMessage] = useState<Message | null>(null);
+  const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isPinnedModalOpen, setIsPinnedModalOpen] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [groupTitle, setGroupTitle] = useState('');
-  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
   const [showPrivateModal, setShowPrivateModal] = useState(false);
 
+  // Task Delegation Pre-fill Modal State
+  const [isDelegateTaskOpen, setIsDelegateTaskOpen] = useState(false);
+  const [taskDefaultAreaId, setTaskDefaultAreaId] = useState<string | undefined>(undefined);
+
+  // Search in conversation
+  const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
+  const [inChatSearchQuery, setInChatSearchQuery] = useState('');
+
+  // Group creation form state
+  const [groupTitle, setGroupTitle] = useState('');
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+
+  // Decrypted messages state
+  const [decryptedMessagesMap, setDecryptedMessagesMap] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Sync active conversation with URL or default
   useEffect(() => {
     if (urlConvId && conversations.some((c) => c.id === urlConvId)) {
       setActiveConversationId(urlConvId);
@@ -53,10 +83,10 @@ function ChatContent() {
   }, [urlConvId, conversations, activeConversationId, setActiveConversationId]);
 
   const currentConv = conversations.find((c) => c.id === activeConversationId);
-  const EMPTY_MESSAGES: Message[] = [];
-  const currentMessages = (activeConversationId && messages[activeConversationId]) ? messages[activeConversationId] : EMPTY_MESSAGES;
-  const messagesKey = currentMessages.map((m) => m.id + m.content).join('|');
+  const currentMessages = (activeConversationId && messages[activeConversationId]) ? messages[activeConversationId] : [];
+  const messagesKey = currentMessages.map((m) => m.id + m.content + (m.pinned ? 'p' : '') + (m.threadCount || 0) + (m.reactions?.map(r=>r.count).join('') || '')).join('|');
 
+  // Decryption effect
   useEffect(() => {
     let isMounted = true;
     const processDecryption = async () => {
@@ -74,22 +104,58 @@ function ChatContent() {
     return () => { isMounted = false; };
   }, [messagesKey]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesKey]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim() || !activeConversationId) return;
-    const textToSend = inputText.trim();
-    setInputText('');
-    await sendMessage(activeConversationId, textToSend, 'TEXT');
+  // Send message handler
+  const handleSendMessage = async (text: string, attachments?: MessageAttachment[]) => {
+    if (!activeConversationId) return;
+    await sendMessage(activeConversationId, text, 'TEXT', attachments);
   };
 
-  const filteredConversations = conversations.filter((c) =>
-    (c.title || '').toLowerCase().includes(chatSearch.toLowerCase())
-  );
+  // Handle Slash Command Trigger
+  const handleSlashCommand = (cmd: string) => {
+    if (cmd === '/tarefa') {
+      if (currentConv?.area_id) {
+        setTaskDefaultAreaId(currentConv.area_id);
+      }
+      setIsDelegateTaskOpen(true);
+    } else if (cmd === '/ia') {
+      setIsAIAssistantOpen(true);
+    } else if (cmd === '/chamado') {
+      alert('Abrindo modal de chamado...');
+    }
+  };
 
+  // Handle Create Task from a Specific Message
+  const handleCreateTaskFromMessage = (msg: Message, content: string) => {
+    if (currentConv?.area_id) {
+      setTaskDefaultAreaId(currentConv.area_id);
+    }
+    setIsDelegateTaskOpen(true);
+  };
+
+  // Handle Create Task from AI recommendation
+  const handleCreateTaskFromAI = (title: string, description: string) => {
+    if (currentConv?.area_id) {
+      setTaskDefaultAreaId(currentConv.area_id);
+    }
+    setIsDelegateTaskOpen(true);
+  };
+
+  // Filter messages if search inside chat is active
+  const displayedMessages = inChatSearchQuery.trim()
+    ? currentMessages.filter((m) => {
+        const text = decryptedMessagesMap[m.id] || m.content;
+        return text.toLowerCase().includes(inChatSearchQuery.toLowerCase());
+      })
+    : currentMessages;
+
+  const pinnedMessages = currentMessages.filter((m) => m.pinned);
+
+  // Modal Handlers
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!groupTitle.trim() || selectedGroupMembers.length === 0) return;
@@ -107,206 +173,244 @@ function ChatContent() {
   };
 
   return (
-    <div className="h-[calc(100vh-5.5rem)] flex bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-2xl overflow-hidden card-shadow font-sans">
-      {/* ── Sidebar de conversas ── */}
-      <div className="w-64 border-r border-[#E2E8E3] dark:border-[#1E3125] flex flex-col bg-[#F5F7F5] dark:bg-[#0B120E] shrink-0 select-none">
-        {/* Header */}
-        <div className="p-3 border-b border-[#E2E8E3] dark:border-[#1E3125] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-[#5C6E62] dark:text-slate-400 uppercase tracking-wider">
-              Conversas Internas
-            </span>
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setShowPrivateModal(true)}
-                className="p-1 rounded-lg text-[#8FA595] hover:text-[#4D7C5D] hover:bg-[#EBF2EE] dark:hover:bg-[#1C2E24] transition-colors cursor-pointer"
-                title="Nova Conversa Privada"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setShowGroupModal(true)}
-                className="p-1 rounded-lg text-[#8FA595] hover:text-[#4D7C5D] hover:bg-[#EBF2EE] dark:hover:bg-[#1C2E24] transition-colors cursor-pointer"
-                title="Criar Grupo"
-              >
-                <Users className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+    <div className="h-[calc(100vh-5.5rem)] flex bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl overflow-hidden card-shadow font-sans relative">
+      {/* ── 1. Sidebar Esquerda de Conversas ── */}
+      <ChatSidebar
+        onOpenPrivateModal={() => setShowPrivateModal(true)}
+        onOpenGroupModal={() => setShowGroupModal(true)}
+        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+      />
 
-          <div className="relative">
-            <Search className="w-3 h-3 text-[#8FA595] absolute left-2.5 top-2.5" />
-            <input
-              type="text"
-              placeholder="Filtrar conversas..."
-              value={chatSearch}
-              onChange={(e) => setChatSearch(e.target.value)}
-              className="w-full bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl pl-7 pr-2 py-1.5 text-xs text-[#1A281E] dark:text-slate-200 placeholder-[#8FA595] focus:outline-none focus:border-[#4D7C5D] transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Conversation list */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map((conv) => {
-            const isActive = conv.id === activeConversationId;
-            return (
-              <button
-                key={conv.id}
-                onClick={() => setActiveConversationId(conv.id)}
-                className={`w-full text-left px-3 py-2.5 flex items-center justify-between transition-colors border-b border-[#E2E8E3] dark:border-[#1E3125]/60 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#EBF2EE] dark:bg-[#1C2E24] border-l-2 border-l-[#4D7C5D]'
-                    : 'hover:bg-white dark:hover:bg-[#121D16]'
-                }`}
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center space-x-1.5">
-                    {conv.type === 'AREA' && <Building2 className={`w-3 h-3 shrink-0 ${isActive ? 'text-[#4D7C5D]' : 'text-[#8FA595]'}`} />}
-                    {conv.type === 'GROUP' && <Users className={`w-3 h-3 shrink-0 ${isActive ? 'text-[#4D7C5D]' : 'text-[#8FA595]'}`} />}
-                    {conv.type === 'PRIVATE' && <MessageSquare className={`w-3 h-3 shrink-0 ${isActive ? 'text-[#4D7C5D]' : 'text-[#8FA595]'}`} />}
-                    <p className={`text-xs font-semibold truncate ${isActive ? 'text-[#1A281E] dark:text-white' : 'text-[#1A281E] dark:text-slate-200'}`}>
-                      {conv.title}
-                    </p>
-                  </div>
-                  <p className="text-[11px] text-[#8FA595] dark:text-slate-500 truncate mt-0.5 font-normal">
-                    {conv.lastMessage?.content
-                      ? conv.lastMessage.content.slice(0, 28) + '...'
-                      : 'Sem mensagens'}
-                  </p>
-                </div>
-                <span className={`text-[9px] font-semibold uppercase shrink-0 px-1.5 py-0.5 rounded-full ${
-                  isActive
-                    ? 'bg-[#D4E8DB] dark:bg-[#1E3125] text-[#2C523D] dark:text-[#76B38B]'
-                    : 'text-[#8FA595] dark:text-slate-500'
-                }`}>
-                  {conv.type}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Main Chat Pane ── */}
+      {/* ── 2. Área Central de Mensagens ── */}
       {currentConv ? (
-        <div className="flex-1 flex flex-col bg-white dark:bg-[#121D16]">
-          {/* Header */}
-          <div className="px-4 py-2.5 border-b border-[#E2E8E3] dark:border-[#1E3125] flex items-center justify-between bg-[#F5F7F5] dark:bg-[#0B120E]">
-            <div>
-              <h3 className="text-sm font-bold text-[#1A281E] dark:text-slate-100">{currentConv.title}</h3>
-              <p className="text-[10px] text-[#5C6E62] dark:text-slate-400 font-mono mt-0.5">
-                Canal Operacional • {currentConv.type}
-              </p>
+        <div className="flex-1 flex flex-col bg-white dark:bg-[#121D16] min-w-0 h-full">
+          {/* Header da Conversa */}
+          <div className="px-5 py-3.5 border-b border-[#D5E0D7] dark:border-[#1E3125] flex items-center justify-between bg-white/70 dark:bg-[#0B120E]/80 backdrop-blur-sm z-10 shrink-0">
+            <div className="flex items-center space-x-3 min-w-0 pr-2">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-2xl bg-[#1B3026] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                  {currentConv.type === 'AREA' ? (
+                    <Building2 className="w-5 h-5" />
+                  ) : currentConv.type === 'GROUP' ? (
+                    <Users className="w-5 h-5" />
+                  ) : (
+                    <UserAvatar name={currentConv.title || 'U'} size="md" />
+                  )}
+                </div>
+                <span className="w-3 h-3 rounded-full bg-[#2C6E49] border-2 border-white dark:border-[#121D16] absolute -bottom-0.5 -right-0.5" />
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100 truncate">
+                    {currentConv.title}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] text-[9px] font-mono font-bold uppercase">
+                    {currentConv.type}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#5E7567] dark:text-slate-400 mt-0.5 truncate">
+                  {currentConv.type === 'AREA'
+                    ? 'Canal oficial vinculado ao nó operacional e rituais diários'
+                    : currentConv.type === 'GROUP'
+                    ? 'Comitê executivo multiprofissional'
+                    : 'Canal seguro privado de comunicação direta'}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center space-x-1.5 text-[10px] text-[#8FA595] dark:text-slate-400 font-mono">
-              <Lock className="w-3 h-3 text-[#4D7C5D]" />
-              <span>WebCrypto Encrypted</span>
+
+            {/* Actions Bar */}
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {/* Internal Search Toggle */}
+              <button
+                onClick={() => setInChatSearchOpen(!inChatSearchOpen)}
+                className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                  inChatSearchOpen
+                    ? 'bg-[#1B3026] text-white'
+                    : 'text-[#5E7567] hover:text-[#111D15] dark:hover:text-white hover:bg-[#EEF2EE] dark:hover:bg-[#1C2E24]'
+                }`}
+                title="Buscar nesta conversa"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+
+              {/* Pinned Messages Button */}
+              <button
+                onClick={() => setIsPinnedModalOpen(true)}
+                className="p-2 rounded-xl text-[#5E7567] hover:text-[#111D15] dark:hover:text-white hover:bg-[#EEF2EE] dark:hover:bg-[#1C2E24] transition-colors cursor-pointer relative"
+                title="Ver Mensagens Fixadas"
+              >
+                <Pin className="w-4 h-4 rotate-45" />
+                {pinnedMessages.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#1B3026] dark:bg-[#76B38B]" />
+                )}
+              </button>
+
+              {/* AI Assistant Button */}
+              <button
+                onClick={() => setIsAIAssistantOpen(true)}
+                className="p-2 rounded-xl bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] hover:bg-[#D5E0D7] dark:hover:bg-[#2A4A3C] transition-colors cursor-pointer flex items-center space-x-1 font-bold text-xs shadow-2xs"
+                title="Abrir Assistente IA"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">IA</span>
+              </button>
+
+              {/* Context Drawer Toggle */}
+              <button
+                onClick={() => setIsContextDrawerOpen(!isContextDrawerOpen)}
+                className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                  isContextDrawerOpen
+                    ? 'bg-[#1B3026] text-white'
+                    : 'text-[#5E7567] hover:text-[#111D15] dark:hover:text-white hover:bg-[#EEF2EE] dark:hover:bg-[#1C2E24]'
+                }`}
+                title="Ver Contexto Empresarial"
+              >
+                <Info className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-1 font-sans text-xs">
-            {currentMessages.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center pt-16 space-y-2">
-                <MessageSquare className="w-8 h-8 text-[#D4E8DB] dark:text-[#1E3125]" />
-                <p className="text-[#8FA595] text-xs font-medium">Sem mensagens ainda</p>
-              </div>
-            )}
-            {currentMessages.map((msg) => {
-              let displayContent = decryptedMessagesMap[msg.id];
-              if (!displayContent) {
-                displayContent = msg.content.startsWith('[NEXUS_CIPHER:')
-                  ? '🔒 Descriptografando...'
-                  : msg.content;
-              }
-              const isSystem = msg.message_type === 'SYSTEM';
-              const isMine = msg.sender?.id === currentUser.id;
+          {/* In-Chat Search Bar (Conditional) */}
+          {inChatSearchOpen && (
+            <div className="p-2.5 bg-[#EEF2EE] dark:bg-[#0B120E] border-b border-[#D5E0D7] dark:border-[#1E3125] flex items-center space-x-2 animate-in slide-in-from-top-2 duration-150">
+              <Search className="w-3.5 h-3.5 text-[#5E7567]" />
+              <input
+                type="text"
+                placeholder="Filtrar mensagens nesta conversa..."
+                value={inChatSearchQuery}
+                onChange={(e) => setInChatSearchQuery(e.target.value)}
+                className="flex-1 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl px-3 py-1.5 text-xs text-[#111D15] dark:text-slate-100 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026]"
+              />
+              <button
+                onClick={() => {
+                  setInChatSearchQuery('');
+                  setInChatSearchOpen(false);
+                }}
+                className="text-xs font-bold text-[#5E7567] hover:text-[#111D15] px-2 py-1 cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          )}
 
-              if (isSystem) {
-                return (
-                  <div key={msg.id} className="my-3 mx-auto max-w-lg p-2.5 bg-[#F0F4F1] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl text-[11px] text-[#5C6E62] dark:text-slate-400 text-center">
-                    {displayContent}
-                  </div>
-                );
-              }
-
-              return (
-                <div key={msg.id} className="flex items-start space-x-2.5 p-2 rounded-xl hover:bg-[#F5F7F5] dark:hover:bg-[#17261D] transition-colors group">
-                  <UserAvatar name={msg.sender?.name || 'N'} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <span className={`font-bold text-xs ${isMine ? 'text-[#2C523D] dark:text-[#76B38B]' : 'text-[#1A281E] dark:text-slate-200'}`}>
-                        {msg.sender?.name || 'Usuário'}
-                      </span>
-                      <span className="text-[10px] text-[#8FA595] dark:text-slate-500 font-mono">
-                        {msg.sender?.department || msg.sender?.role}
-                      </span>
-                      <span className="text-[9px] text-[#8FA595] dark:text-slate-500 font-mono ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                        {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#1A281E] dark:text-slate-300 mt-0.5 leading-relaxed">{displayContent}</p>
-                  </div>
+          {/* Messages Flow Area */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-1 font-sans text-xs">
+            {displayedMessages.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center pt-24 space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] flex items-center justify-center">
+                  <MessageSquare className="w-6 h-6" />
                 </div>
-              );
-            })}
+                <p className="text-xs font-bold text-[#111D15] dark:text-slate-200">
+                  {inChatSearchQuery ? 'Nenhuma mensagem encontrada para a busca.' : 'Início da conversa operacional.'}
+                </p>
+                <p className="text-[11px] text-[#5E7567] dark:text-slate-400 max-w-sm text-center">
+                  Envie mensagens, compartilhe relatórios ou use '/' para transformar decisões em tarefas oficiais.
+                </p>
+              </div>
+            ) : (
+              displayedMessages.map((msg) => (
+                <ChatMessageItem
+                  key={msg.id}
+                  message={msg}
+                  displayContent={decryptedMessagesMap[msg.id] || msg.content}
+                  isMine={msg.sender?.id === currentUser.id}
+                  onOpenThread={(m) => setActiveThreadMessage(m)}
+                  onCreateTaskFromMessage={handleCreateTaskFromMessage}
+                />
+              ))
+            )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Composer */}
-          <form
-            onSubmit={handleSend}
-            className="p-3 border-t border-[#E2E8E3] dark:border-[#1E3125] bg-[#F5F7F5] dark:bg-[#0B120E] flex items-center space-x-2"
-          >
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Digite uma mensagem..."
-              className="flex-1 bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl px-3 py-2 text-xs text-[#1A281E] dark:text-slate-100 placeholder-[#8FA595] focus:outline-none focus:border-[#4D7C5D] transition-colors"
-            />
-            <button
-              type="submit"
-              className="bg-[#1B3026] hover:bg-[#2A4A3C] text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
-            >
-              <span>Enviar</span>
-              <Send className="w-3 h-3" />
-            </button>
-          </form>
+          <ChatComposer
+            onSendMessage={handleSendMessage}
+            onTriggerSlashCommand={handleSlashCommand}
+          />
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-[#8FA595] text-xs font-medium">
-          Selecione uma conversa.
+        <div className="flex-1 flex flex-col items-center justify-center text-[#5E7567] text-xs font-medium space-y-2">
+          <MessageSquare className="w-10 h-10 text-[#D5E0D7] dark:text-[#1E3125]" />
+          <p>Selecione uma conversa para iniciar.</p>
         </div>
       )}
 
-      {/* ── Modal: Criar Grupo ── */}
+      {/* ── 3. Painel de Threads Lateral (Drawer) ── */}
+      {activeThreadMessage && (
+        <ChatThreadDrawer
+          parentMessage={activeThreadMessage}
+          onClose={() => setActiveThreadMessage(null)}
+        />
+      )}
+
+      {/* ── 4. Painel de Contexto Empresarial (Drawer) ── */}
+      {isContextDrawerOpen && currentConv && (
+        <ChatContextDrawer
+          conversation={currentConv}
+          messages={currentMessages}
+          onClose={() => setIsContextDrawerOpen(false)}
+          onOpenDelegateTask={() => {
+            if (currentConv.area_id) setTaskDefaultAreaId(currentConv.area_id);
+            setIsDelegateTaskOpen(true);
+          }}
+        />
+      )}
+
+      {/* ── 5. Modal de Assistente IA ── */}
+      {isAIAssistantOpen && currentConv && (
+        <ChatAIAssistantModal
+          isOpen={isAIAssistantOpen}
+          onClose={() => setIsAIAssistantOpen(false)}
+          conversation={currentConv}
+          messages={currentMessages}
+          onCreateTaskFromAI={handleCreateTaskFromAI}
+        />
+      )}
+
+      {/* ── 6. Modal de Mensagens Fixadas ── */}
+      {isPinnedModalOpen && currentConv && (
+        <PinnedMessagesModal
+          isOpen={isPinnedModalOpen}
+          onClose={() => setIsPinnedModalOpen(false)}
+          pinnedMessages={pinnedMessages}
+          conversationTitle={currentConv.title || 'Canal'}
+        />
+      )}
+
+      {/* ── 7. Modal de Delegação de Tarefa (Integrado nativamente) ── */}
+      <DelegateTaskModal
+        isOpen={isDelegateTaskOpen}
+        onClose={() => setIsDelegateTaskOpen(false)}
+        defaultAreaId={taskDefaultAreaId}
+      />
+
+      {/* ── 8. Modal: Criar Grupo ── */}
       {showGroupModal && (
-        <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl text-xs card-shadow">
-            <h3 className="text-sm font-bold text-[#1A281E] dark:text-slate-100">Criar Novo Grupo</h3>
-            <form onSubmit={handleCreateGroup} className="space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl card-shadow">
+            <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100">Criar Novo Comitê / Grupo</h3>
+            <form onSubmit={handleCreateGroup} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-[#5C6E62] dark:text-slate-400 mb-1">Nome do Grupo</label>
+                <label className="block text-xs font-bold text-[#111D15] dark:text-slate-300 mb-1">Nome do Grupo</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Diretoria + Financeiro"
+                  placeholder="Ex: Diretoria + Comercial + Auditoria"
                   value={groupTitle}
                   onChange={(e) => setGroupTitle(e.target.value)}
-                  className="w-full bg-[#F5F7F5] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl p-2.5 text-[#1A281E] dark:text-slate-200 focus:outline-none focus:border-[#4D7C5D] text-xs transition-colors"
+                  className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-2.5 text-[#111D15] dark:text-slate-200 focus:outline-none focus:border-[#1B3026] text-xs font-medium"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#5C6E62] dark:text-slate-400 mb-1">Participantes</label>
-                <div className="max-h-36 overflow-y-auto space-y-0.5 bg-[#F5F7F5] dark:bg-[#0B120E] p-2 rounded-xl border border-[#E2E8E3] dark:border-[#1E3125]">
+                <label className="block text-xs font-bold text-[#111D15] dark:text-slate-300 mb-1">Participantes</label>
+                <div className="max-h-40 overflow-y-auto space-y-1 bg-[#EEF2EE] dark:bg-[#0B120E] p-2.5 rounded-2xl border border-[#D5E0D7] dark:border-[#1E3125]">
                   {profiles
                     .filter((p) => p.id !== currentUser.id)
                     .map((p) => (
                       <label
                         key={p.id}
-                        className="flex items-center space-x-2 text-[#1A281E] dark:text-slate-300 hover:bg-[#EBF2EE] dark:hover:bg-[#17261D] p-1.5 rounded-lg cursor-pointer transition-colors"
+                        className="flex items-center space-x-2.5 text-[#111D15] dark:text-slate-300 hover:bg-white dark:hover:bg-[#17261D] p-2 rounded-xl cursor-pointer transition-colors"
                       >
                         <input
                           type="checkbox"
@@ -319,24 +423,24 @@ function ChatContent() {
                               setSelectedGroupMembers(selectedGroupMembers.filter((id) => id !== p.id));
                             }
                           }}
-                          className="accent-[#4D7C5D]"
+                          className="accent-[#1B3026] rounded"
                         />
-                        <span className="text-xs">{p.name} <span className="text-[#8FA595] font-normal">({p.department || p.role})</span></span>
+                        <span className="text-xs font-semibold">{p.name} <span className="text-[#5E7567] font-normal">({p.department || p.role})</span></span>
                       </label>
                     ))}
                 </div>
               </div>
-              <div className="flex justify-end space-x-2 pt-1">
+              <div className="flex justify-end space-x-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowGroupModal(false)}
-                  className="px-3 py-1.5 text-[#5C6E62] dark:text-slate-400 hover:text-[#1A281E] dark:hover:text-slate-200 text-xs font-medium cursor-pointer"
+                  className="px-4 py-2 text-[#5E7567] hover:text-[#111D15] dark:hover:text-slate-200 text-xs font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#1B3026] hover:bg-[#2A4A3C] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  className="px-5 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
                 >
                   Criar Grupo
                 </button>
@@ -346,32 +450,35 @@ function ChatContent() {
         </div>
       )}
 
-      {/* ── Modal: Conversa Privada ── */}
+      {/* ── 9. Modal: Nova Conversa Privada ── */}
       {showPrivateModal && (
-        <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-2xl w-full max-w-md p-5 space-y-3 shadow-xl card-shadow">
-            <h3 className="text-sm font-bold text-[#1A281E] dark:text-slate-100">Nova Conversa Privada</h3>
-            <div className="max-h-52 overflow-y-auto divide-y divide-[#E2E8E3] dark:divide-[#1E3125] bg-[#F5F7F5] dark:bg-[#0B120E] rounded-xl border border-[#E2E8E3] dark:border-[#1E3125]">
+        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl card-shadow">
+            <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100">Iniciar Nova Conversa Direta</h3>
+            <div className="max-h-60 overflow-y-auto divide-y divide-[#D5E0D7] dark:divide-[#1E3125] bg-[#EEF2EE] dark:bg-[#0B120E] rounded-2xl border border-[#D5E0D7] dark:border-[#1E3125]">
               {profiles
                 .filter((p) => p.id !== currentUser.id)
                 .map((p) => (
                   <button
                     key={p.id}
                     onClick={() => handleStartPrivateChat(p.id)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-[#EBF2EE] dark:hover:bg-[#17261D] flex items-center justify-between text-[#1A281E] dark:text-slate-200 transition-colors cursor-pointer"
+                    className="w-full text-left p-3 hover:bg-white dark:hover:bg-[#17261D] flex items-center justify-between text-[#111D15] dark:text-slate-200 transition-colors cursor-pointer"
                   >
-                    <div>
-                      <p className="text-xs font-semibold">{p.name}</p>
-                      <p className="text-[10px] text-[#8FA595] dark:text-slate-400 font-mono">{p.department || p.role}</p>
+                    <div className="flex items-center space-x-2.5">
+                      <UserAvatar name={p.name} size="sm" />
+                      <div>
+                        <p className="text-xs font-bold">{p.name}</p>
+                        <p className="text-[10px] text-[#5E7567] dark:text-slate-400 font-mono">{p.department || p.role}</p>
+                      </div>
                     </div>
-                    <span className="text-[#4D7C5D] dark:text-[#76B38B] font-semibold text-xs">Conversar →</span>
+                    <span className="text-[#1B3026] dark:text-[#76B38B] font-bold text-xs">Conversar →</span>
                   </button>
                 ))}
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-1">
               <button
                 onClick={() => setShowPrivateModal(false)}
-                className="px-3 py-1.5 text-xs text-[#5C6E62] dark:text-slate-400 hover:text-[#1A281E] dark:hover:text-slate-200 font-medium cursor-pointer"
+                className="px-4 py-2 text-xs text-[#5E7567] hover:text-[#111D15] dark:hover:text-slate-200 font-bold cursor-pointer"
               >
                 Fechar
               </button>
@@ -385,7 +492,7 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-[#8FA595] text-xs font-medium">Carregando Chat...</div>}>
+    <Suspense fallback={<div className="p-12 text-center text-[#5E7567] text-xs font-medium">Carregando Hub de Chat...</div>}>
       <ChatContent />
     </Suspense>
   );

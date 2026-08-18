@@ -10,6 +10,7 @@ import {
   Alert,
   Conversation,
   Message,
+  MessageAttachment,
   NotificationItem,
   WeeklyReportItem,
   MessageType,
@@ -286,11 +287,15 @@ const SEED_ALERTS: Alert[] = [
 
 const SEED_CONVERSATIONS: Conversation[] = [
   { id: 'conv-area-4', type: 'AREA', title: 'Financeiro', area_id: 'area-4', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-1', type: 'AREA', title: 'Comercial Compras', area_id: 'area-1', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-2', type: 'AREA', title: 'Comercial Vendas', area_id: 'area-2', created_at: `${TODAY}T08:00:00Z` },
   { id: 'conv-area-3', type: 'AREA', title: 'Logística', area_id: 'area-3', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-area-8', type: 'AREA', title: 'Monitoramento Segurança', area_id: 'area-8', created_at: `${TODAY}T08:00:00Z` },
   { id: 'conv-area-5', type: 'AREA', title: 'Compras', area_id: 'area-5', created_at: `${TODAY}T08:00:00Z` },
-  { id: 'conv-grp-1', type: 'GROUP', title: 'Diretoria + Comercial Compras + Vendas', created_at: `${TODAY}T09:00:00Z` },
-  { id: 'conv-priv-1', type: 'PRIVATE', title: 'João Silva & Carlos Santos', created_at: `${TODAY}T10:00:00Z` },
+  { id: 'conv-area-8', type: 'AREA', title: 'Monitoramento Segurança', area_id: 'area-8', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-area-9', type: 'AREA', title: 'TI & Infraestrutura', area_id: 'area-9', created_at: `${TODAY}T08:00:00Z` },
+  { id: 'conv-grp-1', type: 'GROUP', title: 'Comitê Executivo • Diretoria + Gestão', created_at: `${TODAY}T09:00:00Z` },
+  { id: 'conv-priv-1', type: 'PRIVATE', title: 'Carlos Santos (Diretoria)', created_at: `${TODAY}T10:00:00Z` },
+  { id: 'conv-priv-2', type: 'PRIVATE', title: 'Ricardo Almeida (Compras)', created_at: `${TODAY}T10:15:00Z` },
 ];
 
 const SEED_MESSAGES: Record<string, Message[]> = {
@@ -299,9 +304,94 @@ const SEED_MESSAGES: Record<string, Message[]> = {
       id: 'msg-4-1',
       conversation_id: 'conv-area-4',
       sender_id: 'usr-mgr-4',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-mgr-4'),
       content: 'A conciliação bancária do lote principal foi concluída sem divergências.',
       message_type: 'TEXT',
       created_at: `${TODAY}T14:20:00Z`,
+      pinned: true,
+      reactions: [{ emoji: '👍', count: 2, users: ['Carlos Santos', 'Mariana Lima'] }],
+      attachments: [
+        {
+          name: 'fechamento-conciliacao-agosto-2026.pdf',
+          size: '1.8 MB',
+          type: 'PDF',
+        },
+      ],
+      threadCount: 2,
+      threadReplies: [
+        {
+          id: 'reply-4-1-1',
+          conversation_id: 'conv-area-4',
+          parentMessageId: 'msg-4-1',
+          sender_id: 'usr-admin',
+          sender: SEED_PROFILES.find((p) => p.id === 'usr-admin'),
+          content: 'Excelente Fernanda! Todas as contas do Santander e Itaú estão validadas?',
+          message_type: 'TEXT',
+          created_at: `${TODAY}T14:25:00Z`,
+        },
+        {
+          id: 'reply-4-1-2',
+          conversation_id: 'conv-area-4',
+          parentMessageId: 'msg-4-1',
+          sender_id: 'usr-mgr-4',
+          sender: SEED_PROFILES.find((p) => p.id === 'usr-mgr-4'),
+          content: 'Sim, saldos 100% batidos conforme extratos consolidados.',
+          message_type: 'TEXT',
+          created_at: `${TODAY}T14:28:00Z`,
+        },
+      ],
+    },
+    {
+      id: 'msg-4-2',
+      conversation_id: 'conv-area-4',
+      sender_id: 'usr-admin',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-admin'),
+      content: 'Precisamos preparar a prévia do EBITDA para a reunião de conselho amanhã às 10h.',
+      message_type: 'TEXT',
+      created_at: `${TODAY}T15:10:00Z`,
+      reactions: [{ emoji: '🚀', count: 1, users: ['Fernanda Lima'] }],
+    },
+  ],
+  'conv-area-1': [
+    {
+      id: 'msg-1-1',
+      conversation_id: 'conv-area-1',
+      sender_id: 'usr-mgr-1',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-mgr-1'),
+      content: 'Cotação LME do Cobre fechou em alta hoje ($9.480/ton). Reajustando tabela de compra de sucata mista.',
+      message_type: 'TEXT',
+      created_at: `${TODAY}T11:02:00Z`,
+      pinned: true,
+      attachments: [
+        {
+          name: 'tabela-cotacao-lme-diaria.xlsx',
+          size: '420 KB',
+          type: 'SHEET',
+        },
+      ],
+      reactions: [{ emoji: '📈', count: 3, users: ['Carlos Santos', 'Mariana Lima', 'Fernanda Lima'] }],
+    },
+    {
+      id: 'msg-1-2',
+      conversation_id: 'conv-area-1',
+      sender_id: 'usr-mgr-1',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-mgr-1'),
+      content: 'Precisamos agendar a auditoria do lote #992 de sucata de cobre com o setor de qualidade antes de sexta.',
+      message_type: 'TEXT',
+      created_at: `${TODAY}T11:30:00Z`,
+    },
+  ],
+  'conv-grp-1': [
+    {
+      id: 'msg-grp-1',
+      conversation_id: 'conv-grp-1',
+      sender_id: 'usr-dir',
+      sender: SEED_PROFILES.find((p) => p.id === 'usr-dir'),
+      content: 'Alinhamento estratégico do trimestre: foco absoluto em manter a margem de contribuição acima de 18% e zerar atrasos logísticos.',
+      message_type: 'TEXT',
+      created_at: `${TODAY}T09:15:00Z`,
+      pinned: true,
+      reactions: [{ emoji: '🎯', count: 4, users: ['Carlos Santos', 'Ricardo Almeida', 'Mariana Lima', 'Fernanda Lima'] }],
     },
   ],
 };
@@ -693,7 +783,16 @@ interface NexusContextType {
   createObligation: (obData: Omit<Obligation, 'id' | 'created_at' | 'updated_at'>) => void;
   toggleObligationActive: (id: string) => void;
   deleteObligation: (id: string) => void;
-  sendMessage: (conversationId: string, content: string, messageType?: MessageType) => Promise<void>;
+  sendMessage: (
+    conversationId: string,
+    content: string,
+    messageType?: MessageType,
+    attachments?: MessageAttachment[]
+  ) => Promise<void>;
+  togglePinMessage: (conversationId: string, messageId: string) => void;
+  addReaction: (conversationId: string, messageId: string, emoji: string) => void;
+  sendThreadReply: (conversationId: string, parentMessageId: string, content: string) => Promise<void>;
+  deleteMessage: (conversationId: string, messageId: string) => void;
   createGroupConversation: (title: string, memberUserIds: string[]) => string;
   createPrivateConversation: (targetUserId: string) => string;
   acknowledgeAlert: (alertId: string) => void;
@@ -935,7 +1034,8 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const sendMessage = async (
     conversationId: string,
     content: string,
-    messageType: MessageType = 'TEXT'
+    messageType: MessageType = 'TEXT',
+    attachments?: MessageAttachment[]
   ) => {
     const timestamp = new Date().toISOString();
     const encrypted = await encryptMessage(content, conversationId);
@@ -948,6 +1048,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       content: encrypted.ciphertext,
       message_type: messageType,
       created_at: timestamp,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
     };
 
     setMessages((prev) => ({
@@ -958,6 +1059,98 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setConversations((prev) =>
       prev.map((c) => (c.id === conversationId ? { ...c, lastMessage: newMsg } : c))
     );
+  };
+
+  const togglePinMessage = (conversationId: string, messageId: string) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] || []).map((m) =>
+        m.id === messageId ? { ...m, pinned: !m.pinned } : m
+      ),
+    }));
+  };
+
+  const addReaction = (conversationId: string, messageId: string, emoji: string) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] || []).map((m) => {
+        if (m.id !== messageId) return m;
+        const currentReactions = m.reactions || [];
+        const existingReactionIndex = currentReactions.findIndex((r) => r.emoji === emoji);
+
+        let newReactions = [...currentReactions];
+        if (existingReactionIndex > -1) {
+          const currentR = newReactions[existingReactionIndex];
+          const hasUser = currentR.users.includes(currentUser.name);
+          if (hasUser) {
+            // Remove user reaction
+            const newUsers = currentR.users.filter((u) => u !== currentUser.name);
+            if (newUsers.length === 0) {
+              newReactions.splice(existingReactionIndex, 1);
+            } else {
+              newReactions[existingReactionIndex] = {
+                ...currentR,
+                count: newUsers.length,
+                users: newUsers,
+              };
+            }
+          } else {
+            // Add user to existing reaction
+            newReactions[existingReactionIndex] = {
+              ...currentR,
+              count: currentR.count + 1,
+              users: [...currentR.users, currentUser.name],
+            };
+          }
+        } else {
+          // Add new reaction emoji
+          newReactions.push({
+            emoji,
+            count: 1,
+            users: [currentUser.name],
+          });
+        }
+        return { ...m, reactions: newReactions };
+      }),
+    }));
+  };
+
+  const sendThreadReply = async (
+    conversationId: string,
+    parentMessageId: string,
+    content: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    const replyMsg: Message = {
+      id: `reply-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      conversation_id: conversationId,
+      parentMessageId,
+      sender_id: currentUser.id,
+      sender: currentUser,
+      content,
+      message_type: 'TEXT',
+      created_at: timestamp,
+    };
+
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] || []).map((m) => {
+        if (m.id !== parentMessageId) return m;
+        const existingReplies = m.threadReplies || [];
+        return {
+          ...m,
+          threadReplies: [...existingReplies, replyMsg],
+          threadCount: (m.threadCount || 0) + 1,
+        };
+      }),
+    }));
+  };
+
+  const deleteMessage = (conversationId: string, messageId: string) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] || []).filter((m) => m.id !== messageId),
+    }));
   };
 
   const createGroupConversation = (title: string, memberUserIds: string[]): string => {
@@ -1491,6 +1684,10 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         toggleObligationActive,
         deleteObligation,
         sendMessage,
+        togglePinMessage,
+        addReaction,
+        sendThreadReply,
+        deleteMessage,
         createGroupConversation,
         createPrivateConversation,
         acknowledgeAlert,
