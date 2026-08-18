@@ -162,29 +162,43 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <p className="text-[10px] text-[#5E7567] dark:text-slate-400">{currentUser.email}</p>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-0.5">
+              <div className="max-h-64 overflow-y-auto space-y-1 p-0.5">
                 <span className="text-[9px] font-bold text-[#5E7567] uppercase px-2 py-1 block">
-                  Simular outro perfil:
+                  Alternar Perfil / Cenário:
                 </span>
-                {profiles.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      switchUser(p.id);
-                      setShowUserDropdown(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                      p.id === currentUser.id
-                        ? 'bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] font-bold'
-                        : 'text-[#3B4F43] dark:text-slate-300 hover:bg-[#EEF2EE] dark:hover:bg-[#17261D]'
-                    }`}
-                  >
-                    <span className="truncate">{p.name}</span>
-                    <span className="text-[9px] text-[#5E7567] dark:text-slate-400 font-mono shrink-0 ml-1">
-                      {p.role}
-                    </span>
-                  </button>
-                ))}
+                {profiles.map((p) => {
+                  const isSelected = p.id === currentUser.id;
+                  const isEmployeeDemo = p.id === 'usr-emp-1';
+
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        switchUser(p.id);
+                        setShowUserDropdown(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-100/70 dark:bg-[#1C2E24] text-emerald-900 dark:text-[#76B38B] font-bold ring-1 ring-emerald-400/40'
+                          : isEmployeeDemo
+                          ? 'bg-amber-50/60 dark:bg-amber-950/20 text-[#111D15] dark:text-slate-200 hover:bg-amber-100/60 font-medium'
+                          : 'text-[#3B4F43] dark:text-slate-300 hover:bg-[#EEF2EE] dark:hover:bg-[#17261D]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1.5 min-w-0">
+                        <span className="truncate">{p.name}</span>
+                        {isEmployeeDemo && (
+                          <span className="text-[9px] px-1.5 py-0.2 bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 rounded font-bold">
+                            Dia Moderado
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-[#5E7567] dark:text-slate-400 font-mono shrink-0 ml-1">
+                        {p.role}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
