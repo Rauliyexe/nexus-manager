@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { NotificationDrawer } from './NotificationDrawer';
+import { PersonalAgentDrawer } from '../agent/PersonalAgentDrawer';
 import { DailyClosingModal } from '../modals/DailyClosingModal';
 import { ModeTransitionOverlay } from './ModeTransitionOverlay';
 import { BloombergTerminal } from '../terminal/BloombergTerminal';
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { appMode, isTransitioningMode, setAppMode, activePopUpTask, setActivePopUpTask } = useNexus();
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
+  const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
 
   return (
     <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#EEF2EE] dark:bg-[#0B120E] text-[#111D15] dark:text-[#F2F6F3] flex flex-col font-sans antialiased">
@@ -57,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onToggleNotificationDrawer={() =>
                 setIsNotificationDrawerOpen(!isNotificationDrawerOpen)
               }
+              onToggleAgentDrawer={() => setIsAgentDrawerOpen(!isAgentDrawerOpen)}
             />
 
             {/* ONLY this main area scrolls! */}
@@ -91,6 +94,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NotificationDrawer
         isOpen={isNotificationDrawerOpen}
         onClose={() => setIsNotificationDrawerOpen(false)}
+      />
+
+      <PersonalAgentDrawer
+        isOpen={isAgentDrawerOpen}
+        onClose={() => setIsAgentDrawerOpen(false)}
       />
     </div>
   );

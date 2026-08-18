@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Search, Sun, Moon, ChevronRight } from 'lucide-react';
+import { Bell, Search, Sun, Moon, ChevronRight, Sparkles } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { USER_ROLE_LABELS } from '@/lib/types/nexus';
@@ -10,6 +10,7 @@ import { USER_ROLE_LABELS } from '@/lib/types/nexus';
 interface TopbarProps {
   onOpenClosingModal: () => void;
   onToggleNotificationDrawer: () => void;
+  onToggleAgentDrawer?: () => void;
 }
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
@@ -31,6 +32,7 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
 export const Topbar: React.FC<TopbarProps> = ({
   onOpenClosingModal,
   onToggleNotificationDrawer,
+  onToggleAgentDrawer,
 }) => {
   const pathname = usePathname();
   const { currentUser, profiles, switchUser, notifications, theme, toggleTheme } = useNexus();
@@ -71,12 +73,25 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Right: Search + Theme + Notifications + User */}
       <div className="flex items-center space-x-2 shrink-0">
+        {/* Personal AI Copilot Button */}
+        {onToggleAgentDrawer && (
+          <button
+            onClick={onToggleAgentDrawer}
+            className="px-3 py-1.5 rounded-xl bg-[#EEF2EE] dark:bg-[#1C2E24] border border-[#D5E0D7] dark:border-[#1E3125] text-[#1B3026] dark:text-[#76B38B] hover:border-[#1B3026] dark:hover:border-[#4D7C5D] transition-all cursor-pointer flex items-center space-x-1.5 font-bold text-xs shadow-2xs group"
+            title="Abrir Personal AI Copilot"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#2C6E49] dark:text-[#76B38B] group-hover:rotate-12 transition-transform" />
+            <span className="hidden sm:inline">AI Copilot</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2C6E49] dark:bg-[#76B38B] animate-pulse" />
+          </button>
+        )}
+
         {/* Search */}
         <div className="relative hidden sm:block">
           <input
             type="text"
             placeholder="Buscar..."
-            className="w-44 lg:w-56 pl-8 pr-3 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs text-[#111D15] dark:text-slate-200 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026] transition-colors"
+            className="w-36 lg:w-48 pl-8 pr-3 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs text-[#111D15] dark:text-slate-200 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026] transition-colors"
           />
           <Search className="w-3.5 h-3.5 text-[#5E7567] absolute left-2.5 top-2.5 pointer-events-none" />
         </div>
