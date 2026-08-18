@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Send, CornerUpRight, MessageSquare } from 'lucide-react';
 import { Message } from '@/lib/types/nexus';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { useNexus } from '@/lib/store/nexusContext';
 
 interface ChatThreadDrawerProps {
@@ -68,11 +69,13 @@ export const ChatThreadDrawer: React.FC<ChatThreadDrawerProps> = ({
                 {new Date(parentMessage.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-            <p className="text-xs text-[#111D15] dark:text-slate-200 mt-1 leading-relaxed">
-              {parentMessage.content.startsWith('[NEXUS_CIPHER:')
-                ? '🔒 Mensagem com Criptografia'
-                : parentMessage.content}
-            </p>
+            <div className="text-xs text-[#111D15] dark:text-slate-200 mt-1 leading-relaxed">
+              {parentMessage.content.startsWith('[NEXUS_CIPHER:') ? (
+                <span>🔒 Mensagem com Criptografia</span>
+              ) : (
+                <MarkdownRenderer content={parentMessage.content} />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -99,9 +102,9 @@ export const ChatThreadDrawer: React.FC<ChatThreadDrawerProps> = ({
                     {new Date(reply.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <p className="text-xs text-[#111D15] dark:text-slate-200 mt-0.5 leading-relaxed">
-                  {reply.content}
-                </p>
+                <div className="text-xs text-[#111D15] dark:text-slate-200 mt-0.5 leading-relaxed">
+                  <MarkdownRenderer content={reply.content} />
+                </div>
               </div>
             </div>
           ))

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Conversation, Message } from '@/lib/types/nexus';
 import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 interface ChatAIAssistantModalProps {
   isOpen: boolean;
@@ -225,9 +226,7 @@ export const ChatAIAssistantModal: React.FC<ChatAIAssistantModalProps> = ({
               {activeAction === 'SUMMARY' && (
                 <div className="space-y-3">
                   <div className="p-4 bg-[#EEF2EE]/40 dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl space-y-2 card-shadow">
-                    <p className="text-xs text-[#111D15] dark:text-slate-200 leading-relaxed whitespace-pre-line">
-                      {getSummaryContent()}
-                    </p>
+                    <MarkdownRenderer content={getSummaryContent()} />
                   </div>
 
                   <div className="flex justify-end">
@@ -276,9 +275,9 @@ export const ChatAIAssistantModal: React.FC<ChatAIAssistantModalProps> = ({
                 <div className="space-y-3">
                   <div className="p-4 bg-[#EEF2EE]/40 dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl space-y-2">
                     <span className="text-[10px] font-bold text-[#5E7567] uppercase">Sugestão de Resposta Formal:</span>
-                    <p className="text-xs text-[#111D15] dark:text-slate-200 leading-relaxed italic">
-                      "{getDraftContent()}"
-                    </p>
+                    <div className="text-xs text-[#111D15] dark:text-slate-200 leading-relaxed">
+                      <MarkdownRenderer content={getDraftContent()} />
+                    </div>
                   </div>
 
                   <div className="flex justify-end">

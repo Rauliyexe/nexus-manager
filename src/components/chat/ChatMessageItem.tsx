@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Message, MessageAttachment } from '@/lib/types/nexus';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { useNexus } from '@/lib/store/nexusContext';
 
 interface ChatMessageItemProps {
@@ -102,8 +103,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </div>
 
           {/* Content */}
-          <div className="text-xs text-[#111D15] dark:text-slate-200 mt-1 leading-relaxed whitespace-pre-wrap selection:bg-[#2C6E49]/20">
-            {displayContent}
+          <div className="text-xs text-[#111D15] dark:text-slate-200 mt-1 leading-relaxed selection:bg-[#2C6E49]/20">
+            <MarkdownRenderer content={displayContent} isUser={isMine} />
           </div>
 
           {/* Attachments */}

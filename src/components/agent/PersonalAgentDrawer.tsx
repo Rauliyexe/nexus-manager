@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import {
   getStoredGeminiKey,
   setStoredGeminiKey,
@@ -552,13 +553,13 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
 
                   {/* Message Bubble Principal */}
                   <div
-                    className={`p-3.5 rounded-2xl text-xs leading-relaxed card-shadow whitespace-pre-wrap ${
+                    className={`p-3.5 rounded-2xl text-xs leading-relaxed card-shadow ${
                       isUser
                         ? 'bg-[#1B3026] text-white rounded-tr-xs'
                         : 'bg-[#EEF2EE]/60 dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] text-[#111D15] dark:text-slate-200 rounded-tl-xs'
                     }`}
                   >
-                    {msg.text}
+                    <MarkdownRenderer content={msg.text} isUser={isUser} />
                   </div>
 
                   {/* Executed Action Badge */}
