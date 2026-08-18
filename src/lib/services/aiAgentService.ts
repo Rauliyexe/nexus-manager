@@ -398,42 +398,138 @@ export async function executeAgentTool(
   }
 }
 
-// ── 3. Heurística Local / Fallback Mock Engine (para quando ANTHROPIC_API_KEY não estiver setada) ──
+// ── 3. Motor Heurístico com Raciocínio Contextual Local (Fallback Inteligente) ──
 export async function runLocalAgentInference(
   userMessage: string,
-  context: AgentContext
-): Promise<{ text: string; toolsUsed: string[]; actionTaken?: any }> {
-  const lower = userMessage.toLowerCase();
+  context: AgentContext,
+  history: Array<{ sender: 'user' | 'agent'; text: string }> = []
+): Promise<{ text: string; thoughtProcess?: string; toolsUsed: string[]; actionTaken?: any; engineType: 'local' }> {
+  const lower = userMessage.toLowerCase().trim();
   const toolsUsed: string[] = [];
+  const thoughts: string[] = [];
   let actionTaken: any = undefined;
 
-  // Consulta 1: O que tenho hoje? / Minhas tarefas / Tarefas atrasadas
-  if (lower.includes('hoje') || lower.includes('tarefa') || lower.includes('fazer') || lower.includes('atrasad')) {
+  thoughts.push(`[Raciocínio Local] Analisando mensagem do usuário: "${userMessage}"`);
+  thoughts.push(`[Perfil] Usuário ativo: ${context.currentUser.name} (${context.currentUser.role} · ${context.currentUser.department || 'Geral'})`);
+
+  // Detecta se a última mensagem do agente listava tarefas
+  const lastAgentMsg = history.filter((h) => h.sender === 'agent').slice(-1)[0]?.text || '';
+  const contextMentionsTasks = lastAgentMsg.includes('tarefa') || lastAgentMsg.includes('TASK-') || lastAgentMsg.includes('pendente');
+
+  // Intenção 1: Como concluir / Como resolver / Dúvida sobre finalização de tarefas (inclui typos como "conlui-las")
+  const isHowToComplete =
+    lower.includes('conlui') ||
+    lower.includes('conclui') ||
+    lower.includes('finaliz') ||
+    lower.includes('como posso') ||
+    lower.includes('como faco') ||
+    lower.includes('como fazer') ||
+    lower.includes('como resolver') ||
+    lower.includes('como fechar') ||
+    (contextMentionsTasks && (lower.includes('como') || lower.includes('quais') || lower.includes('fazer')));
+
+  if (isHowToComplete && !lower.includes('crie') && !lower.includes('criar')) {
+    toolsUsed.push('get_my_tasks');
+    thoughts.push('[Dedução] Identificada intenção de orientação sobre como concluir/executar tarefas.');
+    thoughts.push('[Ação] Consultando base de tarefas ativas do usuário para contextualizar a resposta...');
+
+    const taskResult = await executeAgentTool('get_my_tasks', { filter: 'ALL' }, context);
+    const parsed = JSON.parse(taskResult.content);
+    const pendingTasks = (parsed.tasks || []).filter((t: any) => t.status !== 'COMPLETED');
+
+    thoughts.push(`[Resultado] ${pendingTasks.length} tarefa(s) pendente(s) identificada(s). Estruturando passo a passo executivo.`);
+
+    let taskExamples = '';
+    if (pendingTasks.length > 0) {
+      taskExamples = pendingTasks
+        .slice(0, 3)
+        .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} · Prazo: ${t.due_date})`)
+        .join('\n');
+    }
+
+    const responseText = `Para concluir suas tarefas no **Nexus Command Center**, você possui **3 maneiras rápidas e práticas**:
+
+### 1. 🤖 Diretamente Comigo (Copiloto IA)
+Basta me enviar uma mensagem rápida informando o código da tarefa. Por exemplo:
+> *"Conclua a tarefa ${pendingTasks[0]?.code || 'TASK-0001'}"* ou *"Marque ${pendingTasks[0]?.title || 'a primeira tarefa'} como concluída"*.
+Eu atualizo o status no sistema instantaneamente para você!
+
+### 2. 📋 Pelo Painel de Atividades & Rituais
+No módulo de **Tarefas** ou no seu **Dashboard Executivo**:
+1. Localize o card da tarefa na sua lista;
+2. Clique no ícone circular de **Checkmark (✓)** para concluir;
+3. O status mudará imediatamente para **COMPLETED** com registro de auditoria.
+
+### 3. 👥 Por Delegação ou Reatribuição
+Caso uma tarefa dependa de outro setor ou membro da equipe, você pode abrir os detalhes da demanda e clicar em **Delegar** para transferir a responsabilidade.
+
+${
+  pendingTasks.length > 0
+    ? `\n📌 **Tarefas pendentes sob sua responsabilidade agora:**\n${taskExamples}\n\nDeseja que eu conclua alguma delas agora? Basta me indicar qual!`
+    : '\n✨ Você não possui nenhuma tarefa pendente no momento. Todas estão concluídas!'
+}`;
+
+    return {
+      text: responseText,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      engineType: 'local',
+    };
+  }
+
+  // Intenção 2: Consulta de Tarefas / O que tenho hoje / Atrasadas / Pendências
+  if (
+    lower.includes('hoje') ||
+    lower.includes('tarefa') ||
+    lower.includes('fazer') ||
+    lower.includes('atrasad') ||
+    lower.includes('pendent') ||
+    lower.includes('minhas demand')
+  ) {
     toolsUsed.push('get_my_tasks');
     const filter = lower.includes('atrasad') ? 'OVERDUE' : lower.includes('hoje') ? 'TODAY' : 'ALL';
+    thoughts.push(`[Dedução] Consulta de tarefas com filtro: ${filter}`);
+
     const taskResult = await executeAgentTool('get_my_tasks', { filter }, context);
     const parsed = JSON.parse(taskResult.content);
 
     if (parsed.count === 0) {
+      thoughts.push('[Resultado] Nenhuma tarefa encontrada no filtro solicitado.');
       return {
-        text: `Olá, ${context.currentUser.name}. Consultei o sistema e você **não possui tarefas pendentes** no filtro solicitado (${filter === 'TODAY' ? 'hoje' : filter === 'OVERDUE' ? 'atrasadas' : 'geral'}). Sua operação está em dia!`,
+        text: `Olá, **${context.currentUser.name}**. Consultei o Command Center e você **não possui tarefas pendentes** no filtro solicitado (${
+          filter === 'TODAY' ? 'hoje' : filter === 'OVERDUE' ? 'atrasadas' : 'geral'
+        }). Toda a sua operação está em dia!`,
+        thoughtProcess: thoughts.join('\n'),
         toolsUsed,
+        engineType: 'local',
       };
     }
 
+    thoughts.push(`[Resultado] ${parsed.count} tarefa(s) encontrada(s). Formatando lista.`);
+
     const taskList = parsed.tasks
-      .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} • Prazo: ${t.due_date}) — *${t.status}*`)
+      .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} • Prazo: ${t.due_date}) — *Status: ${t.status}*`)
       .join('\n');
 
     return {
-      text: `Olá, ${context.currentUser.name}! Encontrei **${parsed.count} tarefa(s)** sob sua responsabilidade:\n\n${taskList}\n\nPosso te ajudar a concluir ou atualizar alguma delas?`,
+      text: `Olá, **${context.currentUser.name}**! Encontrei **${parsed.count} tarefa(s)** sob sua gestão:\n\n${taskList}\n\n💡 **Dica:** Você pode me pedir para concluir qualquer uma delas dizendo: *"Conclua a tarefa ${parsed.tasks[0]?.code}"*!`,
+      thoughtProcess: thoughts.join('\n'),
       toolsUsed,
+      engineType: 'local',
     };
   }
 
-  // Ação 2: Criar tarefa
-  if (lower.includes('crie uma tarefa') || lower.includes('criar tarefa') || lower.includes('nova tarefa') || lower.includes('agende')) {
+  // Intenção 3: Criar / Agendar Nova Tarefa
+  if (
+    lower.includes('crie uma tarefa') ||
+    lower.includes('criar tarefa') ||
+    lower.includes('nova tarefa') ||
+    lower.includes('agende') ||
+    lower.includes('nova demanda')
+  ) {
     toolsUsed.push('create_task');
+    thoughts.push('[Dedução] Intenção de criação e delegação de tarefa detectada.');
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const dueDate = tomorrow.toISOString().split('T')[0];
@@ -441,44 +537,74 @@ export async function runLocalAgentInference(
     const cleanTitle = userMessage
       .replace(/crie uma tarefa (para|de)?/i, '')
       .replace(/criar tarefa (para|de)?/i, '')
+      .replace(/agende (uma tarefa|uma reunião)?/i, '')
       .trim();
 
     const title = cleanTitle ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Revisão Operacional de Demandas';
-    const createResult = await executeAgentTool('create_task', {
-      title,
-      description: `Tarefa criada pelo Copiloto IA para ${context.currentUser.name}`,
-      due_date: dueDate,
-      priority: lower.includes('urgente') ? 'HIGH' : 'MEDIUM',
-    }, context);
+    const priority = lower.includes('urgente') || lower.includes('critica') ? 'HIGH' : 'MEDIUM';
+
+    thoughts.push(`[Execução] Criando tarefa: "${title}" | Prazo: ${dueDate} | Prioridade: ${priority}`);
+
+    const createResult = await executeAgentTool(
+      'create_task',
+      {
+        title,
+        description: `Demanda criada via Personal Copilot para ${context.currentUser.name}`,
+        due_date: dueDate,
+        priority,
+      },
+      context
+    );
 
     return {
-      text: `✓ **Tarefa criada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Prazo:** ${dueDate}\n• **Prioridade:** ${lower.includes('urgente') ? 'Alta' : 'Média'}\n\nA tarefa já está registrada no seu quadro de atividades.`,
+      text: `✓ **Tarefa criada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Prazo de Entrega:** ${dueDate}\n• **Prioridade:** ${priority === 'HIGH' ? 'Alta' : 'Média'}\n• **Área:** Geral\n\nA demanda já está registrada e visível no seu quadro operacional.`,
+      thoughtProcess: thoughts.join('\n'),
       toolsUsed,
       actionTaken: createResult.actionTaken,
+      engineType: 'local',
     };
   }
 
-  // Ação 3: Marcar tarefa como concluída
-  if (lower.includes('concluída') || lower.includes('conclua') || lower.includes('finalizar') || lower.includes('concluir')) {
+  // Intenção 4: Marcar Tarefa como Concluída por Comando Direto
+  if (
+    (lower.includes('conclu') || lower.includes('finaliz') || lower.includes('fech')) &&
+    (lower.includes('task-') || lower.includes('tarefa') || lower.includes('primeira') || lower.includes('todas'))
+  ) {
     toolsUsed.push('update_task');
-    const firstTask = context.tasks[0];
-    if (firstTask) {
-      const updateResult = await executeAgentTool('update_task', {
-        taskId: firstTask.id,
-        status: 'COMPLETED',
-      }, context);
+    thoughts.push('[Dedução] Comando direto de alteração de status para COMPLETED.');
+
+    // Procura código da tarefa na mensagem (ex: task-1, TASK-0001)
+    const matchCode = userMessage.match(/task-[\w\d-]+/i);
+    let targetTask = matchCode
+      ? context.tasks.find((t) => t.id.toLowerCase() === matchCode[0].toLowerCase() || t.code.toLowerCase() === matchCode[0].toLowerCase())
+      : context.tasks.find((t) => t.status !== 'COMPLETED') || context.tasks[0];
+
+    if (targetTask) {
+      thoughts.push(`[Ação] Atualizando status da tarefa [${targetTask.code}] "${targetTask.title}" para COMPLETED.`);
+      const updateResult = await executeAgentTool(
+        'update_task',
+        {
+          taskId: targetTask.id,
+          status: 'COMPLETED',
+        },
+        context
+      );
 
       return {
-        text: `✓ **Tarefa [${firstTask.code}] marcada como CONCLUÍDA!**\n\n"${firstTask.title}" foi finalizada no sistema.`,
+        text: `✓ **Tarefa [${targetTask.code}] marcada como CONCLUÍDA!**\n\nA demanda **"${targetTask.title}"** foi finalizada no sistema com sucesso.`,
+        thoughtProcess: thoughts.join('\n'),
         toolsUsed,
         actionTaken: updateResult.actionTaken,
+        engineType: 'local',
       };
     }
   }
 
-  // Consulta 4: Projetos / Áreas
-  if (lower.includes('projeto') || lower.includes('área') || lower.includes('setor')) {
+  // Intenção 5: Projetos / Áreas do Sistema
+  if (lower.includes('projeto') || lower.includes('área') || lower.includes('setor') || lower.includes('departamento')) {
     toolsUsed.push('get_my_projects');
+    thoughts.push('[Dedução] Consulta de projetos e áreas operacionais.');
+
     const projResult = await executeAgentTool('get_my_projects', {}, context);
     const parsed = JSON.parse(projResult.content);
 
@@ -488,20 +614,26 @@ export async function runLocalAgentInference(
 
     return {
       text: `Você possui acesso a **${parsed.count} projeto(s)/área(s)** no Command Center:\n\n${projList}`,
+      thoughtProcess: thoughts.join('\n'),
       toolsUsed,
+      engineType: 'local',
     };
   }
 
-  // Consulta 5: Notificações
-  if (lower.includes('notificação') || lower.includes('notificações') || lower.includes('alerta') || lower.includes('urgente')) {
+  // Intenção 6: Notificações / Alertas
+  if (lower.includes('notifica') || lower.includes('alerta') || lower.includes('urgente') || lower.includes('incidente')) {
     toolsUsed.push('get_my_notifications');
+    thoughts.push('[Dedução] Verificação de notificações e alertas do usuário.');
+
     const notifResult = await executeAgentTool('get_my_notifications', { unreadOnly: true }, context);
     const parsed = JSON.parse(notifResult.content);
 
     if (parsed.count === 0) {
       return {
-        text: `Nenhuma notificação urgente ou pendente no momento. Tudo tranquilo no seu setor!`,
+        text: `Nenhuma notificação urgente ou pendente no momento. Toda a operação está calma no seu setor!`,
+        thoughtProcess: thoughts.join('\n'),
         toolsUsed,
+        engineType: 'local',
       };
     }
 
@@ -511,14 +643,28 @@ export async function runLocalAgentInference(
 
     return {
       text: `Encontrei **${parsed.count} notificação(ões) importante(s)**:\n\n${notifList}`,
+      thoughtProcess: thoughts.join('\n'),
       toolsUsed,
+      engineType: 'local',
     };
   }
 
-  // Resposta padrão contextual
+  // Resposta Padrão Consultiva Contextual com orientações claras
   toolsUsed.push('get_my_profile');
+  thoughts.push('[Dedução] Saudação inicial ou solicitação aberta. Apresentando capacidades executivas.');
+
   return {
-    text: `Olá, ${context.currentUser.name} (${context.currentUser.role} • ${context.currentUser.department || 'Copper Group'}).\n\nSou o seu **Personal AI Copilot**. Posso consultar suas tarefas, verificar status de projetos, checar alertas ou criar novas demandas diretamente no Command Center. Como posso te ajudar agora?`,
+    text: `Olá, **${context.currentUser.name}** (${context.currentUser.role} • ${context.currentUser.department || 'Geral'}).
+
+Sou o seu **Personal AI Copilot** no Command Center. Estou conectado a todas as suas tarefas, projetos, canais de comunicação e alertas corporativos.
+
+Como posso te ajudar hoje?
+• *"O que preciso fazer hoje?"* — Lista suas tarefas e prazos
+• *"Como posso concluí-las?"* — Orienta a execução ou conclui por comando
+• *"Crie uma tarefa urgente para..."* — Registra novas demandas
+• *"Mostre meus projetos e status"* — Panorama das áreas operacionais`,
+    thoughtProcess: thoughts.join('\n'),
     toolsUsed,
+    engineType: 'local',
   };
 }

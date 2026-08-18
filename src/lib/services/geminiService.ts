@@ -1,6 +1,6 @@
 import { AgentContext, AGENT_TOOLS, executeAgentTool } from './aiAgentService';
 
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
 /**
  * Converte as ferramentas do formato genérico para o formato FunctionDeclarations aceito pelo Google Gemini.
@@ -104,28 +104,27 @@ function buildGeminiContents(
 }
 
 /**
- * Executa o fluxo do Personal Agent via Google Gemini REST API com Tool Calling nativo.
+ * Executa o fluxo do Personal Agent via Google Gemini REST API com Tool Calling nativo e Thinking Mode.
  */
 export async function runGeminiAgentInference(
   message: string,
   history: Array<{ sender: 'user' | 'agent'; text: string }>,
   context: AgentContext,
   apiKey: string,
-  preferredModel?: string
-): Promise<{ text: string; toolsUsed: string[]; actionTaken?: any }> {
+  preferredModel?: string,
+  enableThinking: boolean = true
+): Promise<{ text: string; thoughtProcess?: string; toolsUsed: string[]; actionTaken?: any; engineType: 'gemini' }> {
   const modelName = preferredModel || DEFAULT_GEMINI_MODEL;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-  const systemInstruction = `Você é o Personal AI Copilot do usuário ${context.currentUser.name} (${context.currentUser.role} no departamento de ${context.currentUser.department || 'Geral'}) dentro do Command Center do Nexus Manager.
+  const systemInstruction = `Você é o Personal AI Copilot Executivo do usuário ${context.currentUser.name} (${context.currentUser.role} no departamento de ${context.currentUser.department || 'Geral'}) dentro do Command Center do Nexus Manager.
 
-Seu objetivo é ajudar o usuário a executar seu trabalho diário com rapidez, precisão, segurança e clareza.
-Você tem acesso às informações oficiais do sistema através de ferramentas (tools) autorizadas.
-Diretrizes fundamentais:
-1. Sempre que o usuário perguntar sobre suas tarefas, projetos, áreas, alertas ou mensagens, USE a ferramenta apropriada correspondente para buscar os dados reais.
-2. Nunca invente dados corporativos. Se uma ferramenta retornar vazio, informe com clareza.
-3. Se o usuário pedir para criar uma tarefa ou atualizar status, execute a ferramenta necessária e confirme a ação de forma amigável.
-4. Responda em português brasileiro de forma executiva, profissional, formatando em markdown limpo (tabelas, listas com marcadores, destaques em negrito quando conveniente).
-5. Seja direto, conciso e proativo.`;
+MODO DE PENSAMENTO E RACIOCÍNIO PROFUNDO:
+1. RACIOCINE PASSO A PASSO sobre a solicitação do usuário antes de formular a resposta.
+2. Analise criticamente o contexto da conversa e o histórico recente. Se o usuário fizer perguntas contextuais ou de acompanhamento (como "Como posso concluí-las?", "O que fazer agora?", "Quais são as prioridades?"), relacione imediatamente com as tarefas, projetos ou alertas mencionados no histórico.
+3. Se precisar de dados do sistema para fundamentar seu raciocínio, USE as ferramentas disponíveis (get_my_tasks, get_my_projects, get_my_notifications, etc.).
+4. Nunca forneça respostas prontas e vazias. Seja consultivo, estratégico e forneça instruções acionáveis de resolução (ex: como atualizar o status da tarefa, como delegar, ou links e caminhos no Command Center).
+5. Responda em português brasileiro de forma executiva, profissional, formatando em markdown com listas claras, negritos estratégicos e tabelas quando apropriado.`;
 
   const initialContents = buildGeminiContents(message, history);
   const toolsPayload = [
@@ -135,29 +134,51 @@ Diretrizes fundamentais:
   ];
 
   const toolsUsed: string[] = [];
+  const thoughtsAccumulator: string[] = [];
   let actionTaken: any = undefined;
   let currentContents: any[] = [...initialContents];
   let finalResponseText = '';
 
+  // Configuração de geração com suporte a Thinking Budget quando suportado
+  const isThinkingModel = modelName.includes('2.0') || modelName.includes('thinking') || enableThinking;
+  const generationConfig: Record<string, any> = {
+    temperature: 0.3,
+    maxOutputTokens: 2048,
+  };
+
+  if (isThinkingModel && !modelName.includes('1.5')) {
+    // Modelos Gemini 2.0 aceitam thinkingConfig
+    generationConfig.thinkingConfig = {
+      thinkingBudget: 2048,
+    };
+  }
+
   // Loop de iterações para Function Calling (máximo 3 turnos para segurança)
   for (let turn = 0; turn < 3; turn++) {
-    const requestBody = {
+    const requestBody: any = {
       systemInstruction: {
         parts: [{ text: systemInstruction }],
       },
       contents: currentContents,
       tools: toolsPayload,
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 1024,
-      },
+      generationConfig,
     };
 
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
+
+    // Se o modelo rejeitar thinkingConfig com erro 400, faz retry sem o thinkingConfig
+    if (!res.ok && res.status === 400 && generationConfig.thinkingConfig) {
+      delete requestBody.generationConfig.thinkingConfig;
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+    }
 
     if (!res.ok) {
       const errText = await res.text();
@@ -172,10 +193,28 @@ Diretrizes fundamentais:
 
     const modelParts = candidate.content.parts || [];
     const functionCalls = modelParts.filter((p: any) => p.functionCall);
-    const textParts = modelParts.filter((p: any) => p.text);
 
-    if (textParts.length > 0) {
-      finalResponseText = textParts.map((p: any) => p.text).join('\n');
+    // Extrai blocos de pensamento nativos (part.thought === true)
+    const thoughtParts = modelParts.filter((p: any) => p.thought === true || (p.text && p.thought));
+    const normalTextParts = modelParts.filter((p: any) => p.text && !p.thought && !p.functionCall);
+
+    for (const tp of thoughtParts) {
+      if (tp.text && tp.text.trim()) {
+        thoughtsAccumulator.push(tp.text.trim());
+      }
+    }
+
+    if (normalTextParts.length > 0) {
+      const rawText = normalTextParts.map((p: any) => p.text).join('\n');
+      
+      // Checa se o modelo incluiu tags <thought> no texto
+      const thoughtTagMatch = rawText.match(/<thought>([\s\S]*?)<\/thought>/i);
+      if (thoughtTagMatch) {
+        thoughtsAccumulator.push(thoughtTagMatch[1].trim());
+        finalResponseText = rawText.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
+      } else {
+        finalResponseText = rawText;
+      }
     }
 
     // Se o Gemini não chamou nenhuma ferramenta, concluímos a resposta
@@ -197,6 +236,8 @@ Diretrizes fundamentais:
       const fnArgs = call.args || {};
 
       toolsUsed.push(fnName);
+      thoughtsAccumulator.push(`[Ação] Executando ferramenta oficial: ${fnName}(${JSON.stringify(fnArgs)})`);
+      
       const toolResult = await executeAgentTool(fnName, fnArgs, context);
       if (toolResult.actionTaken) {
         actionTaken = toolResult.actionTaken;
@@ -227,10 +268,16 @@ Diretrizes fundamentais:
     });
   }
 
+  const compiledThoughts = thoughtsAccumulator.length > 0
+    ? thoughtsAccumulator.join('\n\n')
+    : undefined;
+
   return {
     text: finalResponseText || 'Comando processado com sucesso pelo Personal Copilot.',
+    thoughtProcess: compiledThoughts,
     toolsUsed,
     actionTaken,
+    engineType: 'gemini',
   };
 }
 

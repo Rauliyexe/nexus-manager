@@ -31,6 +31,9 @@ import {
   removeStoredGeminiKey,
   getStoredGeminiModel,
   setStoredGeminiModel,
+  getStoredGeminiThinkingEnabled,
+  setStoredGeminiThinkingEnabled,
+  GEMINI_AVAILABLE_MODELS,
 } from '@/lib/services/geminiClient';
 
 const SOUND_PREVIEWS: { label: string; type: SoundType; description: string; icon: React.FC<any> }[] = [
@@ -48,7 +51,8 @@ export default function SettingsPage() {
 
   // Estado da chave Gemini para demonstrações no navegador
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [thinkingEnabled, setThinkingEnabled] = useState(true);
   const [showKey, setShowKey] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
@@ -57,11 +61,13 @@ export default function SettingsPage() {
   useEffect(() => {
     setApiKeyInput(getStoredGeminiKey());
     setSelectedModel(getStoredGeminiModel());
+    setThinkingEnabled(getStoredGeminiThinkingEnabled());
   }, []);
 
   const handleSaveKey = () => {
     setStoredGeminiKey(apiKeyInput);
     setStoredGeminiModel(selectedModel);
+    setStoredGeminiThinkingEnabled(thinkingEnabled);
     setSavedSuccess(true);
     setTestResult(null);
     playSound('TASK_COMPLETED');
@@ -91,9 +97,11 @@ export default function SettingsPage() {
         headers: {
           'Content-Type': 'application/json',
           'x-gemini-api-key': apiKeyInput.trim(),
+          'x-gemini-model': selectedModel,
+          'x-gemini-thinking': String(thinkingEnabled),
         },
         body: JSON.stringify({
-          message: 'Olá, teste de conexão executivo do Nexus Manager.',
+          message: 'Olá, teste executivo com Gemini Thinking e raciocínio ativo.',
           history: [],
           context: {
             currentUser,
@@ -109,7 +117,7 @@ export default function SettingsPage() {
       if (res.ok) {
         setTestResult({
           success: true,
-          message: 'Conexão com Google Gemini estabelecida com sucesso! IA operacional.',
+          message: `Conexão com Google Gemini (${selectedModel}) estabelecida com sucesso! Raciocínio operacional.`,
         });
         playSound('AI_READY');
       } else {
@@ -233,47 +241,62 @@ export default function SettingsPage() {
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full px-3.5 py-2 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs font-medium text-[#111D15] dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#2C6E49]"
               >
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Ultrarrápido & Econômico)</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Última Geração)</option>
+                {GEMINI_AVAILABLE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="flex items-center space-x-2 sm:self-end pt-1">
-              <button
-                type="button"
-                onClick={handleSaveKey}
-                className="flex-1 px-4 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{savedSuccess ? 'Salvo!' : 'Salvar no Navegador'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTestKey}
-                disabled={testingConnection}
-                className="px-3 py-2 bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] hover:bg-[#D5E0D7] rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                title="Testar requisição"
-              >
-                {testingConnection ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                <span>Testar</span>
-              </button>
-
-              {apiKeyInput && (
-                <button
-                  type="button"
-                  onClick={handleRemoveKey}
-                  className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer"
-                  title="Remover chave salva"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
+              <label className="flex items-center space-x-2 cursor-pointer py-2 px-1 text-xs text-[#111D15] dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={thinkingEnabled}
+                  onChange={(e) => setThinkingEnabled(e.target.checked)}
+                  className="rounded text-[#2C6E49] focus:ring-[#2C6E49] w-4 h-4"
+                />
+                <span className="font-semibold text-xs">Exibir Cadeia de Raciocínio (Thinking)</span>
+              </label>
             </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#D5E0D7]/40 dark:border-[#1E3125]">
+            <button
+              type="button"
+              onClick={handleSaveKey}
+              className="px-4 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white rounded-xl font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{savedSuccess ? 'Salvo!' : 'Salvar no Navegador'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTestKey}
+              disabled={testingConnection}
+              className="px-3 py-2 bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] hover:bg-[#D5E0D7] rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              title="Testar requisição"
+            >
+              {testingConnection ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              <span>Testar</span>
+            </button>
+
+            {apiKeyInput && (
+              <button
+                type="button"
+                onClick={handleRemoveKey}
+                className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer"
+                title="Remover chave salva"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {testResult && (

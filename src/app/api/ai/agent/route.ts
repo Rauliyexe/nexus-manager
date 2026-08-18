@@ -27,9 +27,11 @@ export async function POST(req: NextRequest) {
       req.headers.get('x-gemini-model') ||
       body.geminiModel ||
       process.env.GEMINI_MODEL;
+    const enableThinkingHeader = req.headers.get('x-gemini-thinking');
+    const enableThinking = enableThinkingHeader !== null ? enableThinkingHeader === 'true' : true;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-    // ── 1. PRIORIDADE: Google Gemini (Free Tier / Flash) com Tool Calling ──
+    // ── 1. PRIORIDADE: Google Gemini (Free Tier / Flash Thinking) com Tool Calling ──
     if (geminiKey) {
       try {
         const geminiResult = await runGeminiAgentInference(
@@ -37,7 +39,8 @@ export async function POST(req: NextRequest) {
           history,
           context as AgentContext,
           geminiKey,
-          geminiModel
+          geminiModel,
+          enableThinking
         );
         if (geminiResult && geminiResult.text) {
           return NextResponse.json(geminiResult);
@@ -147,6 +150,7 @@ Seja conciso, profissional e útil.`;
               text: finalResponseText,
               toolsUsed,
               actionTaken,
+              engineType: 'claude',
             });
           }
         }
@@ -155,8 +159,8 @@ Seja conciso, profissional e útil.`;
       }
     }
 
-    // ── 3. FALLBACK SEGURO: Motor Heurístico Local Offline ──
-    const result = await runLocalAgentInference(message, context as AgentContext);
+    // ── 3. FALLBACK SEGURO: Motor Heurístico com Raciocínio Local Offline ──
+    const result = await runLocalAgentInference(message, context as AgentContext, history);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Agent API Error:', error);

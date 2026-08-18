@@ -31,7 +31,11 @@ import { ChatContextDrawer } from '@/components/chat/ChatContextDrawer';
 import { ChatAIAssistantModal } from '@/components/chat/ChatAIAssistantModal';
 import { PinnedMessagesModal } from '@/components/chat/PinnedMessagesModal';
 import { DelegateTaskModal } from '@/components/modals/DelegateTaskModal';
-import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
+import {
+  getStoredGeminiKey,
+  getStoredGeminiModel,
+  getStoredGeminiThinkingEnabled,
+} from '@/lib/services/geminiClient';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -152,6 +156,7 @@ function ChatContent() {
             'Content-Type': 'application/json',
             ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
             ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
+            'x-gemini-thinking': String(getStoredGeminiThinkingEnabled()),
           },
           body: JSON.stringify({
             message: cleanedPrompt,
