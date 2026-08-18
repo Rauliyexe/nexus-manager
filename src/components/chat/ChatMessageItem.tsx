@@ -180,7 +180,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       </div>
 
       {/* ── Hover Quick-Action Toolbar ── */}
-      <div className="absolute right-4 -top-3 hidden group-hover:flex items-center bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl shadow-lg p-1 space-x-0.5 z-20 animate-in fade-in zoom-in-95 duration-100">
+      <div className="absolute right-3 top-2 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto flex items-center bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl shadow-lg p-1 space-x-0.5 z-30 transition-all duration-150 card-shadow">
         {/* Reagir */}
         <div className="relative">
           <button
@@ -192,7 +192,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </button>
 
           {showEmojiPicker && (
-            <div className="absolute right-0 bottom-full mb-1 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-1.5 shadow-xl flex items-center space-x-1 z-30 card-shadow">
+            <div className="absolute right-0 bottom-full mb-1.5 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-1.5 shadow-xl flex items-center space-x-1 z-40 card-shadow">
               {QUICK_EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
@@ -251,7 +251,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </button>
 
           {showMoreMenu && (
-            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-1.5 shadow-xl w-40 z-30 card-shadow space-y-0.5">
+            <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-1.5 shadow-xl w-40 z-40 card-shadow space-y-0.5">
               <button
                 onClick={handleCopyText}
                 className="w-full text-left px-2.5 py-1.5 text-xs text-[#111D15] dark:text-slate-200 hover:bg-[#EEF2EE] dark:hover:bg-[#1C2E24] rounded-lg flex items-center space-x-2 cursor-pointer"
