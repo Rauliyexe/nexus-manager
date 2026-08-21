@@ -1,23 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
   <defs>
     <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#020617" />
-    </linearGradient>
-    <linearGradient id="cyanGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0284c7" />
-    </linearGradient>
-    <linearGradient id="emeraldGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#34d399" />
-      <stop offset="100%" stop-color="#059669" />
+      <stop offset="0%" stop-color="#1B3026" />
+      <stop offset="100%" stop-color="#111D15" />
     </linearGradient>
   </defs>
 
   <rect width="192" height="192" rx="42" fill="url(#bgGrad192)" />
-  <rect width="186" height="186" x="3" y="3" rx="39" fill="none" stroke="#1e293b" stroke-width="2.5" />
-  
-  <path d="M52 138 L52 54 L84 54 L140 138 L140 54" fill="none" stroke="url(#cyanGrad192)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" />
-  <polygon points="96,82 110,96 96,110 82,96" fill="url(#emeraldGrad192)" />
-  <circle cx="96" cy="96" r="3.5" fill="#ffffff" />
+  <rect width="186" height="186" x="3" y="3" rx="39" fill="none" stroke="#2C4E3D" stroke-width="2" />
+
+  <!-- Logo Mark Container -->
+  <g transform="translate(43.5, 43.5)">
+    <path 
+      d="M 79 8 L 8 8 L 8 97 L 97 97 L 97 34" 
+      fill="none" 
+      stroke="#76B38B" 
+      stroke-width="16" 
+      stroke-linecap="square" 
+      stroke-linejoin="miter" 
+    />
+    <circle cx="92" cy="13" r="10" fill="#76B38B" />
+  </g>
 </svg>
