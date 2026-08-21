@@ -109,6 +109,52 @@ export const DailyClosingModal: React.FC<DailyClosingModalProps> = ({
  </button>
  </div>
 
+ {/* Highlight Voice AI Action Banner */}
+ <div className="px-5 pt-4">
+   <div className="p-3 bg-gradient-to-r from-[#1B3026] to-[#274437] dark:from-[#16281F] dark:to-[#1F3A2B] rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs border border-[#3B6650]/40">
+     <div className="flex items-center space-x-2.5">
+       <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-300">
+         <Sparkles className="w-4 h-4" />
+       </div>
+       <div>
+         <p className="text-xs font-bold leading-tight flex items-center space-x-1.5">
+           <span>Ditar Relato com IA Valkyra</span>
+           <span className="px-1.5 py-0.2 rounded bg-emerald-400 text-[#1B3026] text-[9px] font-black uppercase">
+             RÁPIDO
+           </span>
+         </p>
+         <p className="text-[10px] text-emerald-100/80 leading-tight mt-0.5">
+           Fale o que foi feito hoje e preencha automaticamente
+         </p>
+       </div>
+     </div>
+
+     <div className="flex items-center space-x-1.5 self-end sm:self-auto">
+       <button
+         type="button"
+         onClick={handleVoiceQuickFill}
+         disabled={isVoiceLoading}
+         className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-[#111D15] rounded-lg font-bold text-xs flex items-center space-x-1.5 cursor-pointer transition-all shadow-xs disabled:opacity-50"
+       >
+         {isVoiceLoading ? (
+           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+         ) : (
+           <Sparkles className="w-3.5 h-3.5" />
+         )}
+         <span>{isVoiceLoading ? 'Processando...' : 'Preencher por Voz'}</span>
+       </button>
+
+       <a
+         href="/reports"
+         className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-[11px] flex items-center space-x-1 transition-colors"
+         title="Abrir Estúdio Completo de Áudio"
+       >
+         <span>Estúdio</span>
+       </a>
+     </div>
+   </div>
+ </div>
+
  {successMessage ? (
  <div className="p-8 text-center space-y-3">
  <div className="w-12 h-12 bg-[#EBF2EE] dark:bg-[#1C2E24] text-[#2C523D] dark:text-[#76B38B] rounded-full flex items-center justify-center mx-auto border border-[#D4E8DB] dark:border-[#1E3125]">
