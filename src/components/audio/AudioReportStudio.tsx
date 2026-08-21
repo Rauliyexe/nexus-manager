@@ -215,16 +215,15 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
           recognition.interimResults = true;
 
           recognition.onresult = (event: any) => {
-            let interim = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              if (event.results[i].isFinal) {
-                speechAccumulatedRef.current += event.results[i][0].transcript + ' ';
-              } else {
-                interim += event.results[i][0].transcript;
+            let fullAccumulated = '';
+            for (let i = 0; i < event.results.length; i++) {
+              if (event.results[i] && event.results[i][0]) {
+                fullAccumulated += event.results[i][0].transcript + ' ';
               }
             }
-            const fullSpoken = (speechAccumulatedRef.current + ' ' + interim).trim();
-            setLiveTranscript(fullSpoken);
+            const cleanSpoken = fullAccumulated.trim();
+            speechAccumulatedRef.current = cleanSpoken;
+            setLiveTranscript(cleanSpoken);
           };
 
           recognition.onerror = (e: any) => {
@@ -278,27 +277,19 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
         // Desliga tracks de áudio do microfone para economizar bateria
         stream.getTracks().forEach((track) => track.stop());
 
-        const finalSpoken = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
+        const finalSpoken = (speechAccumulatedRef.current || liveTranscript).trim();
 
         // ── FLUXO ESPECÍFICO PC vs CELULAR ──
         if (!isMobile) {
-          // NO PC: se o SpeechRecognition já capturou o texto, abre a tela de revisão pré-IA
-          if (finalSpoken) {
-            setTranscriptionToConfirm(finalSpoken);
-            setIsConfirmingText(true);
-          } else if (audioBlobResult.size > 0) {
-            // Se o SpeechRecognition do PC não capturou texto (ex: microfone sem suporte WebSpeech), transcreve via Gemini
-            processRecordedAudioAndReport(audioBlobResult, finalMime, '');
-          } else {
-            setIsConfirmingText(true);
-          }
+          // NO PC: Abre SEMPRE a caixa de confirmação e edição (REVISÃO PRÉ-IA)
+          setTranscriptionToConfirm(finalSpoken);
+          setIsConfirmingText(true);
         } else {
-          // NO CELULAR / PWA:
+          // NO CELULAR / PWA: Se não capturou texto live, processa com Gemini Multimodal
           if (finalSpoken) {
             setTranscriptionToConfirm(finalSpoken);
             setIsConfirmingText(true);
           } else {
-            // Em navegadores móveis onde o SpeechRecognition não emite eventos, transcreve direto pelo Gemini multimodal
             processRecordedAudioAndReport(audioBlobResult, finalMime, '');
           }
         }
@@ -331,7 +322,7 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setIsRecording(false);
 
-    const capturedSpokenText = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
+    const capturedSpokenText = (speechAccumulatedRef.current || liveTranscript).trim();
 
     if (recognitionRef.current) {
       try {
@@ -343,8 +334,8 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
       mediaRecorderRef.current.stop();
     }
 
-    // No PC: se o SpeechRecognition já capturou o texto em tempo real, abre a tela de revisão pré-IA imediatamente
-    if (!isMobile && capturedSpokenText) {
+    // No PC: Abre IMEDIATAMENTE a tela de edição e revisão pré-IA
+    if (!isMobile) {
       setTranscriptionToConfirm(capturedSpokenText);
       setIsConfirmingText(true);
     }
