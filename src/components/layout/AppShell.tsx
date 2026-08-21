@@ -21,12 +21,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
-  const [isAppLoaded, setIsAppLoaded] = useState(false);
+  
+  // Verifica se a splash screen já foi exibida nesta sessão para nunca reaparecer ao trocar de aba
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const alreadyLoaded = sessionStorage.getItem('yggdron_session_splash_done');
+      return !alreadyLoaded;
+    }
+    return true;
+  });
+
+  const handleFinishSplash = () => {
+    setShowSplash(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('yggdron_session_splash_done', 'true');
+    }
+  };
 
   return (
     <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#EEF2EE] dark:bg-[#0B120E] text-[#111D15] dark:text-[#F2F6F3] flex flex-col font-sans antialiased">
-      {/* Premium Initial Loading Splash Screen */}
-      {!isAppLoaded && <LoadingSplashScreen onFinish={() => setIsAppLoaded(true)} />}
+      {/* Premium Initial Loading Splash Screen (Exibido apenas no primeiro carregamento do link) */}
+      {showSplash && <LoadingSplashScreen onFinish={handleFinishSplash} />}
 
       {/* Mode Transition CRT Animation Overlay */}
       {isTransitioningMode && <ModeTransitionOverlay />}
