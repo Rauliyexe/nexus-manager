@@ -22,25 +22,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
   
-  // Verifica se a splash screen já foi exibida nesta sessão para nunca reaparecer ao trocar de aba
-  const [showSplash, setShowSplash] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
+  // Controle rigoroso de splash screen para NUNCA reaparecer durante a navegação entre abas
+  const [showSplash, setShowSplash] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    try {
       const alreadyLoaded = sessionStorage.getItem('yggdron_session_splash_done');
-      return !alreadyLoaded;
+      if (!alreadyLoaded) {
+        setShowSplash(true);
+      }
+    } catch {
+      // Caso localStorage/sessionStorage esteja desabilitado
+      setShowSplash(false);
     }
-    return true;
-  });
+  }, []);
 
   const handleFinishSplash = () => {
     setShowSplash(false);
-    if (typeof window !== 'undefined') {
+    try {
       sessionStorage.setItem('yggdron_session_splash_done', 'true');
+    } catch {
+      // ignore
     }
   };
 
   return (
     <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#EEF2EE] dark:bg-[#0B120E] text-[#111D15] dark:text-[#F2F6F3] flex flex-col font-sans antialiased">
-      {/* Premium Initial Loading Splash Screen (Exibido apenas no primeiro carregamento do link) */}
+      {/* Premium Initial Loading Splash Screen (Estritamente 1x no primeiro acesso do navegador) */}
       {showSplash && <LoadingSplashScreen onFinish={handleFinishSplash} />}
 
       {/* Mode Transition CRT Animation Overlay */}
