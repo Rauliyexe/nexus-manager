@@ -19,10 +19,146 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   FUNCIONARIO: 'Funcionário',
 };
 
+export type FeatureKey =
+  | 'VIEW_DASHBOARD_EXECUTIVE'
+  | 'VIEW_MY_HUB_ROADMAP'
+  | 'AUDIO_AI_REPORTS'
+  | 'MANAGE_ALL_AREAS'
+  | 'MANAGE_TASKS_PERIODIC'
+  | 'SUPPORT_TICKETS'
+  | 'ALERTS_RISKS'
+  | 'CORPORATE_CHAT'
+  | 'VIEW_FINANCIAL_TERMINAL'
+  | 'ACCESS_TI_CONSOLE'
+  | 'ADMIN_SIMULATION'
+  | 'SETTINGS_PAGE'
+  | 'VIEW_PROFILE';
+
+export interface FeatureDefinition {
+  key: FeatureKey;
+  label: string;
+  category: 'EXECUTIVO' | 'OPERACOES' | 'COMUNICACAO' | 'FINANCEIRO' | 'GOVERNANCA';
+  description: string;
+}
+
+export const SYSTEM_FEATURES: FeatureDefinition[] = [
+  { key: 'VIEW_MY_HUB_ROADMAP', label: 'Meu Hub & Roadmap do Turno', category: 'EXECUTIVO', description: 'Painel operacional matinal, tarefas do dia e acompanhamento de turno' },
+  { key: 'AUDIO_AI_REPORTS', label: 'Relatórios por Voz (IA Gemini)', category: 'EXECUTIVO', description: 'Estúdio de áudio e gravação de relatos para a gaveta pessoal' },
+  { key: 'VIEW_PROFILE', label: 'Meu Perfil & Minha Gaveta', category: 'GOVERNANCA', description: 'Histórico pessoal de relatórios e dados do colaborador' },
+  { key: 'SUPPORT_TICKETS', label: 'Chamados & Suporte', category: 'OPERACOES', description: 'Abertura e consulta de incidentes operacionais e TI' },
+  { key: 'CORPORATE_CHAT', label: 'Chat Corporativo', category: 'COMUNICACAO', description: 'Comunicação do setor e mensagens com a equipe' },
+  { key: 'MANAGE_TASKS_PERIODIC', label: 'Gestão de Tarefas Periódicas', category: 'OPERACOES', description: 'Delegação e controle de tarefas diárias, semanais, quinzenais e mensais' },
+  { key: 'VIEW_DASHBOARD_EXECUTIVE', label: 'Painel Indicadores Executivos', category: 'EXECUTIVO', description: 'Visão consolidada de KPIs, tempo de ciclo e conformidade global' },
+  { key: 'MANAGE_ALL_AREAS', label: 'Projetos & Todos os Setores', category: 'OPERACOES', description: 'Workspaces e fechamentos de todas as 10 áreas da empresa' },
+  { key: 'ALERTS_RISKS', label: 'Alertas & Riscos Corporativos', category: 'OPERACOES', description: 'Central de incidentes críticos, atrasos e SLA' },
+  { key: 'VIEW_FINANCIAL_TERMINAL', label: 'Terminal Financeiro & Mercado', category: 'FINANCEIRO', description: 'Cotações de cobre LME/COMEX, margens e fluxo de caixa' },
+  { key: 'ACCESS_TI_CONSOLE', label: 'Console Técnico de TI (IAM)', category: 'GOVERNANCA', description: 'Matriz de permissões, integrações de APIs e logs de auditoria' },
+  { key: 'ADMIN_SIMULATION', label: 'Simulador de Horários Admin', category: 'GOVERNANCA', description: 'Simulação e estresse de horários de fechamento' },
+  { key: 'SETTINGS_PAGE', label: 'Configurações do Sistema', category: 'GOVERNANCA', description: 'Preferências gerais e chaves de IA' },
+];
+
+export type RolePermissionsMap = Record<UserRole, FeatureKey[]>;
+
+export const DEFAULT_ROLE_PERMISSIONS: RolePermissionsMap = {
+  DONO: [
+    'VIEW_DASHBOARD_EXECUTIVE',
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_ALL_AREAS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'VIEW_FINANCIAL_TERMINAL',
+    'ACCESS_TI_CONSOLE',
+    'ADMIN_SIMULATION',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  DIRETOR: [
+    'VIEW_DASHBOARD_EXECUTIVE',
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_ALL_AREAS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'VIEW_FINANCIAL_TERMINAL',
+    'ADMIN_SIMULATION',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  DIRETOR_TI: [
+    'VIEW_DASHBOARD_EXECUTIVE',
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_ALL_AREAS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'ACCESS_TI_CONSOLE',
+    'ADMIN_SIMULATION',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  EQUIPE_TI: [
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'ACCESS_TI_CONSOLE',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  GERENTE: [
+    'VIEW_DASHBOARD_EXECUTIVE',
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_ALL_AREAS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  GERENTE_DEPARTAMENTO: [
+    'VIEW_DASHBOARD_EXECUTIVE',
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_ALL_AREAS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'SETTINGS_PAGE',
+    'VIEW_PROFILE',
+  ],
+  SUPERVISOR: [
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'MANAGE_TASKS_PERIODIC',
+    'SUPPORT_TICKETS',
+    'ALERTS_RISKS',
+    'CORPORATE_CHAT',
+    'VIEW_PROFILE',
+  ],
+  // O FUNCIONÁRIO tem acesso focado exclusivamente no que dita o seu dia de trabalho
+  FUNCIONARIO: [
+    'VIEW_MY_HUB_ROADMAP',
+    'AUDIO_AI_REPORTS',
+    'SUPPORT_TICKETS',
+    'CORPORATE_CHAT',
+    'VIEW_PROFILE',
+  ],
+};
 
 export type DailyStatusType = 'GREEN' | 'YELLOW' | 'RED' | 'NO_RESPONSE';
 
-export type ObligationFrequency = 'DIARIA' | 'SEMANAL' | 'MENSAL';
+export type ObligationFrequency = 'DIARIA' | 'SEMANAL' | 'QUINZENAL' | 'MENSAL';
 
 export type AlertType = 'CRITICAL' | 'ATTENTION' | 'NO_RESPONSE';
 export type AlertPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -145,6 +281,27 @@ export interface NotificationItem {
   read: boolean;
   link?: string;
   created_at: string;
+}
+
+export interface SavedAudioReport {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  userDepartment: string;
+  areaId?: string;
+  areaName: string;
+  transcription: string;
+  summary: string;
+  whatWasDone: string;
+  durationTime: string;
+  resultImpact: string;
+  suggestedStatus: DailyStatusType;
+  nextSteps: string[];
+  thoughtProcess?: string;
+  engineUsed?: string;
+  createdAt: string;
+  syncedToDailyClosing?: boolean;
 }
 
 export interface WeeklyReportItem {
@@ -327,6 +484,7 @@ export interface HubTask {
   created_at: string; // Exact ISO timestamp
   updated_at: string;
   comments: TaskComment[];
+  attachments?: MessageAttachment[];
 }
 
 export interface HubIntegration {

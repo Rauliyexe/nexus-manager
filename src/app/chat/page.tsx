@@ -139,12 +139,12 @@ function ChatContent() {
       try {
         const geminiKey = getStoredGeminiKey();
         const geminiModel = getStoredGeminiModel();
-        const aiProfile = profiles.find((p) => p.id === 'usr-nexus-ai') || {
-          id: 'usr-nexus-ai',
-          name: 'Nexus AI Copilot',
-          email: 'ai@nexus.com.br',
+        const aiProfile = profiles.find((p) => p.id === 'usr-valkyra-ai') || {
+          id: 'usr-valkyra-ai',
+          name: 'Valkyra AI Copilot',
+          email: 'ai@yggdron.com.br',
           role: 'GERENTE' as const,
-          department: 'Nexus Intelligence',
+          department: 'Valkyra Intelligence',
           active: true,
         };
 
@@ -161,7 +161,7 @@ function ChatContent() {
           body: JSON.stringify({
             message: cleanedPrompt,
             history: (messages[targetConvId] || []).slice(-6).map((m) => ({
-              sender: m.sender_id === 'usr-nexus-ai' ? 'agent' : 'user',
+              sender: m.sender_id === 'usr-valkyra-ai' ? 'agent' : 'user',
               text: decryptedMessagesMap[m.id] || m.content,
             })),
             context: {
@@ -188,7 +188,7 @@ function ChatContent() {
           playSound('AI_READY');
         }
       } catch (aiErr) {
-        console.warn('Erro ao processar mensagem com o Nexus AI:', aiErr);
+        console.warn('Erro ao processar mensagem com o Valkyra AI:', aiErr);
       } finally {
         setIsAiTyping(false);
       }
@@ -449,7 +449,7 @@ function ChatContent() {
                   <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
                 </div>
                 <span className="text-xs text-[#5E7567] dark:text-slate-300 font-medium">
-                  Nexus AI Copilot digitando...
+                  Valkyra AI Copilot digitando...
                 </span>
               </div>
             )}

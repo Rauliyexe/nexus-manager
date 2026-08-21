@@ -17,14 +17,14 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Nexus Manager — Centro Operacional Private SaaS',
-  description: 'Sistema privado de gestão operacional, fechamento diário, alertas e telemetria financeira Nexus.',
+  title: 'Yggdron Manager — Centro Operacional Private SaaS',
+  description: 'Sistema privado de gestão operacional, fechamento diário, alertas e telemetria financeira da Yggdron.',
   manifest: '/manifest.json',
-  applicationName: 'Nexus Manager',
+  applicationName: 'Yggdron Manager',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Nexus Manager',
+    title: 'Yggdron Manager',
   },
   icons: {
     icon: [

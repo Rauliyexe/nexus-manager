@@ -17,6 +17,7 @@ import {
   PlayCircle,
   ShieldCheck,
   AlertTriangle,
+  User,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -24,58 +25,57 @@ import { USER_ROLE_LABELS } from '@/lib/types/nexus';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { currentUser, hasFinancialAccess } = useNexus();
+  const { currentUser, hasFeatureAccess } = useNexus();
 
-  const isFinAuthorized = hasFinancialAccess(currentUser);
-  const isTIAuthorized =
-    currentUser.role === 'DONO' ||
-    currentUser.role === 'DIRETOR_TI' ||
-    currentUser.role === 'EQUIPE_TI';
-
-  const navGroups = [
+  const allNavGroups = [
     {
       group: 'EXECUTIVO',
       items: [
-        { label: 'Indicadores', href: '/dashboard', icon: BarChart3 },
-        { label: 'Gestão Operacional', href: '/hub', icon: LayoutDashboard },
-        { label: 'Relatórios', href: '/reports', icon: FileText },
+        { label: 'Indicadores', href: '/dashboard', icon: BarChart3, feature: 'VIEW_DASHBOARD_EXECUTIVE' as const },
+        { label: 'Gestão Operacional', href: '/hub', icon: LayoutDashboard, feature: 'VIEW_MY_HUB_ROADMAP' as const },
+        { label: 'Relatórios', href: '/reports', icon: FileText, feature: 'AUDIO_AI_REPORTS' as const },
       ],
     },
     {
       group: 'OPERAÇÕES',
       items: [
-        { label: 'Projetos & Setores', href: '/areas', icon: Building2 },
-        { label: 'Documentos & Rituais', href: '/obligations', icon: FolderOpen },
-        { label: 'Chamados & Suporte', href: '/tasks', icon: Ticket },
-        { label: 'Alertas & Riscos', href: '/alerts', icon: AlertTriangle },
+        { label: 'Projetos & Setores', href: '/areas', icon: Building2, feature: 'MANAGE_ALL_AREAS' as const },
+        { label: 'Tarefas', href: '/obligations', icon: FolderOpen, feature: 'MANAGE_TASKS_PERIODIC' as const },
+        { label: 'Chamados & Suporte', href: '/tasks', icon: Ticket, feature: 'SUPPORT_TICKETS' as const },
+        { label: 'Alertas & Riscos', href: '/alerts', icon: AlertTriangle, feature: 'ALERTS_RISKS' as const },
       ],
     },
     {
       group: 'COMUNICAÇÃO',
       items: [
-        { label: 'Chat Corporativo', href: '/chat', icon: MessageSquare },
+        { label: 'Chat Corporativo', href: '/chat', icon: MessageSquare, feature: 'CORPORATE_CHAT' as const },
       ],
     },
-    ...(isFinAuthorized
-      ? [
-          {
-            group: 'INTELIGÊNCIA & MERCADO',
-            items: [
-              { label: 'Telemetria Financeira', href: '/financial', icon: DollarSign },
-              { label: 'Terminal Bloomberg', href: '/terminal', icon: Terminal },
-            ],
-          },
-        ]
-      : []),
+    {
+      group: 'INTELIGÊNCIA & MERCADO',
+      items: [
+        { label: 'Telemetria Financeira', href: '/financial', icon: DollarSign, feature: 'VIEW_FINANCIAL_TERMINAL' as const },
+        { label: 'Terminal Bloomberg', href: '/terminal', icon: Terminal, feature: 'VIEW_FINANCIAL_TERMINAL' as const },
+      ],
+    },
     {
       group: 'GOVERNANÇA & TI',
       items: [
-        ...(isTIAuthorized ? [{ label: 'Painel de TI', href: '/ti-console', icon: ShieldCheck }] : []),
-        { label: 'Simulador Admin', href: '/admin/simulacao', icon: PlayCircle },
-        { label: 'Configurações', href: '/settings', icon: Settings },
+        { label: 'Meu Perfil', href: '/profile', icon: User, feature: 'VIEW_PROFILE' as const },
+        { label: 'Painel de TI', href: '/ti-console', icon: ShieldCheck, feature: 'ACCESS_TI_CONSOLE' as const },
+        { label: 'Simulador Admin', href: '/admin/simulacao', icon: PlayCircle, feature: 'ADMIN_SIMULATION' as const },
+        { label: 'Configurações', href: '/settings', icon: Settings, feature: 'SETTINGS_PAGE' as const },
       ],
     },
   ];
+
+  // Filtra apenas os grupos e itens autorizados para o cargo do usuário ativo
+  const navGroups = allNavGroups
+    .map((grp) => ({
+      ...grp,
+      items: grp.items.filter((item) => hasFeatureAccess(currentUser, item.feature)),
+    }))
+    .filter((grp) => grp.items.length > 0);
 
   return (
     <aside className="hidden md:flex w-60 bg-[#1B3026] text-white flex-col justify-between select-none shrink-0 h-full overflow-y-auto transition-all duration-200 border-r border-[#274437]">
@@ -140,9 +140,9 @@ export default function Sidebar() {
       {/* User Profile Card at Bottom */}
       <div className="p-3 border-t border-[#274437] bg-[#16281F]">
         <Link
-          href="/settings"
+          href="/profile"
           className={`flex items-center justify-between p-2.5 rounded-xl transition-all ${
-            pathname === '/settings'
+            pathname === '/profile'
               ? 'bg-[#2A4A3C] text-white'
               : 'text-[#B3C5BA] hover:text-white hover:bg-[#233A2D]'
           }`}
@@ -158,7 +158,7 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
-          <Settings className="w-3.5 h-3.5 text-[#6F9580] shrink-0 ml-1" />
+          <User className="w-3.5 h-3.5 text-[#6F9580] shrink-0 ml-1" />
         </Link>
       </div>
     </aside>

@@ -61,12 +61,38 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* 4 Executive KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Executive Telemetry Live Banner */}
+      <div className="p-4 rounded-2xl bg-[#EEF2EE] dark:bg-[#1C2E24]/60 border border-[#D5E0D7] dark:border-[#1E3125] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+        <div className="flex items-center space-x-3">
+          <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-[#111D15] dark:text-slate-100">
+                Telemetria Executiva em Tempo Real
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold">
+                STREAMING ATIVO
+              </span>
+            </div>
+            <p className="text-[11px] text-[#5E7567] dark:text-slate-400 mt-0.5">
+              10/10 departamentos sincronizados • Latência média do cluster: 42ms • Tempo de carga: 0.8s
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3 text-xs font-mono text-[#1B3026] dark:text-[#76B38B]">
+          <span className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] font-bold">
+            Eficiência Geral: 98.4%
+          </span>
+        </div>
+      </div>
+
+      {/* 5 Executive KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* KPI 1: Conformidade Global */}
         <div className="p-5 rounded-2xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] space-y-2 card-shadow card-shadow-hover transition-all">
           <div className="flex items-center justify-between text-xs font-bold text-[#3B4F43] dark:text-slate-400 uppercase tracking-wide">
-            <span>Índice de Conformidade</span>
+            <span>Conformidade</span>
             <div className="w-8 h-8 rounded-lg bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#2C6E49] dark:text-[#76B38B] flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -77,13 +103,31 @@ export default function DashboardPage() {
           <div className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] h-2 rounded-full overflow-hidden border border-[#D5E0D7] dark:border-[#1E3125]">
             <div className="bg-[#2C6E49] dark:bg-[#76B38B] h-full rounded-full" style={{ width: `${complianceRate}%` }} />
           </div>
-          <p className="text-xs text-[#5E7567] dark:text-slate-400 font-medium pt-0.5">Meta operacional: 95%</p>
+          <p className="text-[11px] text-[#5E7567] dark:text-slate-400 font-medium pt-0.5">Meta operacional: 95%</p>
         </div>
 
-        {/* KPI 2: Áreas Regulares */}
+        {/* KPI 2: Redução de Tempo de Ciclo (Hero KPI) */}
         <div className="p-5 rounded-2xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] space-y-2 card-shadow card-shadow-hover transition-all">
           <div className="flex items-center justify-between text-xs font-bold text-[#3B4F43] dark:text-slate-400 uppercase tracking-wide">
-            <span>Áreas em Operação Normal</span>
+            <span>Tempo de Ciclo</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight flex items-baseline space-x-1">
+            <span>-38%</span>
+            <span className="text-xs font-bold text-[#5E7567]">vs meta</span>
+          </p>
+          <div className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] h-2 rounded-full overflow-hidden border border-[#D5E0D7] dark:border-[#1E3125]">
+            <div className="bg-emerald-500 h-full rounded-full w-4/5" />
+          </div>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold pt-0.5">De 4.2h para 2.6h no fluxo</p>
+        </div>
+
+        {/* KPI 3: Áreas Regulares */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] space-y-2 card-shadow card-shadow-hover transition-all">
+          <div className="flex items-center justify-between text-xs font-bold text-[#3B4F43] dark:text-slate-400 uppercase tracking-wide">
+            <span>Operação Normal</span>
             <div className="w-8 h-8 rounded-lg bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -94,13 +138,13 @@ export default function DashboardPage() {
           <div className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] h-2 rounded-full overflow-hidden border border-[#D5E0D7] dark:border-[#1E3125]">
             <div className="bg-[#1B3026] dark:bg-[#76B38B] h-full rounded-full" style={{ width: `${(greenCount / areas.length) * 100}%` }} />
           </div>
-          <p className="text-xs text-[#2C6E49] dark:text-[#76B38B] font-semibold pt-0.5">Sem ocorrências impeditivas</p>
+          <p className="text-[11px] text-[#2C6E49] dark:text-[#76B38B] font-semibold pt-0.5">Sem ocorrências impeditivas</p>
         </div>
 
-        {/* KPI 3: Ocorrências de Risco / Alertas */}
+        {/* KPI 4: Ocorrências de Risco / Alertas */}
         <div className="p-5 rounded-2xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] space-y-2 card-shadow card-shadow-hover transition-all">
           <div className="flex items-center justify-between text-xs font-bold text-[#3B4F43] dark:text-slate-400 uppercase tracking-wide">
-            <span>Áreas sob Atenção / Alerta</span>
+            <span>Atenção / Alertas</span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -112,13 +156,13 @@ export default function DashboardPage() {
             <div className="bg-amber-500 h-full" style={{ width: `${(yellowCount / areas.length) * 100}%` }} />
             <div className="bg-rose-600 h-full" style={{ width: `${(redCount / areas.length) * 100}%` }} />
           </div>
-          <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold pt-0.5">{yellowCount} Atenção • {redCount} Crítica</p>
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold pt-0.5">{yellowCount} Atenção • {redCount} Crítica</p>
         </div>
 
-        {/* KPI 4: Rituais Diários Executados */}
+        {/* KPI 5: Rituais Diários Executados */}
         <div className="p-5 rounded-2xl bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] space-y-2 card-shadow card-shadow-hover transition-all">
           <div className="flex items-center justify-between text-xs font-bold text-[#3B4F43] dark:text-slate-400 uppercase tracking-wide">
-            <span>Rituais & Obrigações</span>
+            <span>Obrigações Ativas</span>
             <div className="w-8 h-8 rounded-lg bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] flex items-center justify-center">
               <Layers className="w-4 h-4" />
             </div>
@@ -129,7 +173,7 @@ export default function DashboardPage() {
           <div className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] h-2 rounded-full overflow-hidden border border-[#D5E0D7] dark:border-[#1E3125]">
             <div className="bg-[#2C6E49] dark:bg-[#76B38B] h-full rounded-full" style={{ width: `${(activeObligations / totalObligations) * 100}%` }} />
           </div>
-          <p className="text-xs text-[#5E7567] dark:text-slate-400 font-medium pt-0.5">Rotinas ativas mapeadas</p>
+          <p className="text-[11px] text-[#5E7567] dark:text-slate-400 font-medium pt-0.5">Rotinas ativas mapeadas</p>
         </div>
       </div>
 

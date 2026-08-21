@@ -105,6 +105,78 @@ export default function AreaDetailPage() {
           </span>
         </div>
 
+        {/* Department-Specific Live Indicators Banner */}
+        {(() => {
+          const name = area.name.toLowerCase();
+          if (name.includes('logística')) {
+            return (
+              <div className="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-bold uppercase block font-mono">FROTA OPERANTE</span>
+                  <strong className="text-slate-800 dark:text-slate-100">12 Bitrens em rota</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-bold uppercase block font-mono">PESAGEM TOTAL</span>
+                  <strong className="text-slate-800 dark:text-slate-100">284.5 Ton / dia</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-bold uppercase block font-mono">MTRs EMITIDOS</span>
+                  <strong className="text-slate-800 dark:text-slate-100">18 Manifestos</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 font-bold uppercase block font-mono">PONTUALIDADE</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400">98.5% no prazo</strong>
+                </div>
+              </div>
+            );
+          }
+          if (name.includes('financeiro') || name.includes('comercial compras')) {
+            return (
+              <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block font-mono">COTAÇÃO LME SPOT</span>
+                  <strong className="text-slate-800 dark:text-slate-100 font-mono">R$ 51,40 / kg</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block font-mono">TRAVA CAMBIAL</span>
+                  <strong className="text-slate-800 dark:text-slate-100 font-mono">USD @ 5,4200</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block font-mono">CONCILIAÇÃO</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400">100% OK</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block font-mono">LIQUIDEZ D+0</span>
+                  <strong className="text-slate-800 dark:text-slate-100 font-mono">R$ 4.2M Disponível</strong>
+                </div>
+              </div>
+            );
+          }
+          if (name.includes('comercial vendas')) {
+            return (
+              <div className="p-3.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/40 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block font-mono">FATURAMENTO MÊS</span>
+                  <strong className="text-slate-800 dark:text-slate-100 font-mono">104% da Meta</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block font-mono">PREÇO MÉDIO</span>
+                  <strong className="text-slate-800 dark:text-slate-100 font-mono">R$ 56,80 / kg</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block font-mono">VOLUME DCOPPER</span>
+                  <strong className="text-slate-800 dark:text-slate-100">142 Toneladas</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block font-mono">CARTEIRA ATIVA</span>
+                  <strong className="text-slate-800 dark:text-slate-100">38 Clientes B2B</strong>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Tab Navigation Bar */}
         <div className="flex items-center space-x-1.5 border-t border-[#D5E0D7] dark:border-[#1E3125] pt-3 overflow-x-auto text-xs font-semibold no-scrollbar">
           {[

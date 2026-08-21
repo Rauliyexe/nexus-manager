@@ -52,14 +52,14 @@ export default function ObligationsPage() {
         <div>
           <div className="flex items-center space-x-2">
             <h1 className="text-xl sm:text-2xl font-bold text-[#111D15] dark:text-slate-100 tracking-tight">
-              Documentos & Rituais Operacionais
+              Gestão de Tarefas & Rotinas Periódicas
             </h1>
             <span className="px-2 py-0.5 rounded-md bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#3B4F43] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125] font-mono text-[9px] font-bold tracking-wider uppercase">
-              DEMO · RITUAIS
+              TAREFAS DE SETOR
             </span>
           </div>
           <p className="text-sm text-[#5E7567] dark:text-slate-400 mt-0.5">
-            Rotinas diárias, semanais e mensais por área responsável com controle de compliance
+            Tarefas operacionais delegadas (diárias, semanais, quinzenais e mensais) que alimentam o roadmap diário do setor
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function ObligationsPage() {
           className="flex items-center space-x-1.5 bg-[#1B3026] hover:bg-[#2A4A3C] text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Nova Obrigação</span>
+          <span>Delegar Nova Tarefa</span>
         </button>
       </div>
 
@@ -78,7 +78,7 @@ export default function ObligationsPage() {
           <Search className="w-3.5 h-3.5 text-[#5E7567] absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Buscar obrigação por título..."
+            placeholder="Buscar tarefa por título..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl pl-9 pr-3 py-2 text-xs text-[#111D15] dark:text-slate-200 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026] font-medium transition-colors"
@@ -90,7 +90,7 @@ export default function ObligationsPage() {
           onChange={(e) => setSelectedAreaFilter(e.target.value)}
           className="bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl px-3 py-2 text-xs font-semibold text-[#111D15] dark:text-slate-200 focus:outline-none cursor-pointer transition-colors"
         >
-          <option value="ALL">Todas as Áreas</option>
+          <option value="ALL">Todos os Setores</option>
           {areas.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -104,9 +104,10 @@ export default function ObligationsPage() {
           className="bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl px-3 py-2 text-xs font-semibold text-[#111D15] dark:text-slate-200 focus:outline-none cursor-pointer transition-colors"
         >
           <option value="ALL">Todas as Frequências</option>
-          <option value="DIARIA">Diária</option>
-          <option value="SEMANAL">Semanal</option>
-          <option value="MENSAL">Mensal</option>
+          <option value="DIARIA">Diárias</option>
+          <option value="SEMANAL">Semanais</option>
+          <option value="QUINZENAL">Quinzenais</option>
+          <option value="MENSAL">Mensais</option>
         </select>
       </div>
 
@@ -116,10 +117,10 @@ export default function ObligationsPage() {
           <thead>
             <tr className="border-b border-[#D5E0D7] dark:border-[#1E3125] bg-[#EEF2EE] dark:bg-[#0B120E] text-[10px] font-bold uppercase text-[#3B4F43] dark:text-slate-400 tracking-wider">
               <th className="py-3.5 px-4 text-center w-14">Ativa</th>
-              <th className="py-3.5 px-4">Título da Obrigação</th>
-              <th className="py-3.5 px-4">Área Responsável</th>
+              <th className="py-3.5 px-4">Título da Tarefa</th>
+              <th className="py-3.5 px-4">Setor Responsável</th>
               <th className="py-3.5 px-4 text-center">Frequência</th>
-              <th className="py-3.5 px-4 font-mono">Horário Limite</th>
+              <th className="py-3.5 px-4 font-mono">Horário Matinal / Limite</th>
               <th className="py-3.5 px-4 text-right">Ações</th>
             </tr>
           </thead>
@@ -127,7 +128,7 @@ export default function ObligationsPage() {
             {filteredObligations.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-[#5E7567] text-xs font-medium">
-                  Nenhuma obrigação encontrada com os filtros selecionados.
+                  Nenhuma tarefa encontrada com os filtros selecionados.
                 </td>
               </tr>
             ) : (
@@ -158,8 +159,16 @@ export default function ObligationsPage() {
                     </td>
                     <td className="py-3.5 px-4 text-[#111D15] dark:text-slate-200 font-semibold">{obArea?.name || 'N/A'}</td>
                     <td className="py-3.5 px-4 text-center">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#1B3026] dark:text-[#76B38B] border border-[#D5E0D7] dark:border-[#1E3125]">
-                        {ob.frequency}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        ob.frequency === 'DIARIA'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          : ob.frequency === 'SEMANAL'
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                          : ob.frequency === 'QUINZENAL'
+                          ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      }`}>
+                        {ob.frequency === 'DIARIA' ? 'Diária (Manhã)' : ob.frequency === 'SEMANAL' ? 'Semanal' : ob.frequency === 'QUINZENAL' ? 'Quinzenal' : 'Mensal'}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-xs text-[#111D15] dark:text-slate-200">{ob.due_time}</td>
@@ -167,7 +176,7 @@ export default function ObligationsPage() {
                       <button
                         onClick={() => deleteObligation(ob.id)}
                         className="p-1.5 rounded-lg text-[#5E7567] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer"
-                        title="Excluir Obrigação"
+                        title="Excluir Tarefa"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -184,35 +193,38 @@ export default function ObligationsPage() {
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-xs card-shadow">
             <h2 className="text-sm font-bold text-[#111D15] dark:text-slate-100 uppercase tracking-wide">
-              Criar Nova Obrigação
+              Delegar Nova Tarefa Periódica
             </h2>
+            <p className="text-[11px] text-[#5E7567] dark:text-slate-400">
+              Gerentes e Donos podem cadastrar tarefas recorrentes que aparecerão no início do dia no roadmap do setor.
+            </p>
             <form onSubmit={handleCreate} className="space-y-3.5">
               <div className="space-y-1">
-                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Título</label>
+                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Título da Tarefa</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Conciliação bancária diária"
+                  placeholder="Ex: Vistoria matinal do forno e pressão dos cilindros"
                   className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-2.5 text-[#111D15] dark:text-slate-100 focus:outline-none focus:border-[#1B3026]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Descrição</label>
+                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Instruções Operacionais</label>
                 <textarea
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detalhamento operacional da rotina..."
+                  placeholder="Detalhamento operacional da rotina que deve ser executada..."
                   className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-2.5 text-[#111D15] dark:text-slate-100 focus:outline-none focus:border-[#1B3026] resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Área</label>
+                  <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Setor Alocado</label>
                   <select
                     value={areaId}
                     onChange={(e) => setAreaId(e.target.value)}
@@ -233,15 +245,16 @@ export default function ObligationsPage() {
                     onChange={(e) => setFrequency(e.target.value as any)}
                     className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-2.5 text-[#111D15] dark:text-slate-100 focus:outline-none font-semibold cursor-pointer"
                   >
-                    <option value="DIARIA">Diária</option>
+                    <option value="DIARIA">Diária (Todo dia de manhã)</option>
                     <option value="SEMANAL">Semanal</option>
+                    <option value="QUINZENAL">Quinzenal</option>
                     <option value="MENSAL">Mensal</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Horário Limite</label>
+                <label className="block font-bold text-[#3B4F43] dark:text-slate-300">Horário Previsto / Limite</label>
                 <input
                   type="time"
                   value={dueTime}
@@ -262,7 +275,7 @@ export default function ObligationsPage() {
                   type="submit"
                   className="px-5 py-2 bg-[#1B3026] hover:bg-[#2A4A3C] text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all"
                 >
-                  Salvar Obrigação
+                  Salvar Tarefa do Setor
                 </button>
               </div>
             </form>
@@ -272,8 +285,8 @@ export default function ObligationsPage() {
 
       {/* Institutional Demo Footnote */}
       <div className="p-3.5 bg-[#EEF2EE]/40 dark:bg-[#121D16]/40 border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl flex items-center justify-between text-[11px] text-[#5E7567] dark:text-slate-400 font-medium">
-        <span>Ambiente de Demonstração • Obrigações e rituais operacionais simulados para apresentação à diretoria</span>
-        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP COMPLIANCE</span>
+        <span>Ambiente de Gestão de Tarefas • Tarefas operacionais sincronizadas com o roadmap do colaborador</span>
+        <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP OPERATIONAL TASKS</span>
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   size = 'md',
   className = '',
 }) => {
-  // Extract initials (e.g. "Carlos Santos" -> "CS", "João Silva" -> "JS", "Admin Nexus" -> "AN")
+  // Extract initials (e.g. "Carlos Santos" -> "CS", "João Silva" -> "JS", "Admin Yggdron" -> "AN")
   const parts = name.trim().split(' ');
   let initials = parts[0]?.substring(0, 1) || 'N';
   if (parts.length > 1) {

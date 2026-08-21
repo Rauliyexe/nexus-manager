@@ -17,7 +17,7 @@ const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   '/dashboard': { title: 'Indicadores', sub: 'Visão Geral & Matriz de Risco' },
   '/hub': { title: 'Tarefas', sub: 'Gestão Operacional de Demandas' },
   '/areas': { title: 'Projetos', sub: 'Workspaces & Acompanhamento de Setores' },
-  '/obligations': { title: 'Documentos', sub: 'Controle de Obrigações & Rituais' },
+  '/obligations': { title: 'Tarefas', sub: 'Gestão de Tarefas & Rotinas Periódicas' },
   '/alerts': { title: 'Alertas', sub: 'Central de Notificações & Incidentes' },
   '/financial': { title: 'Financeiro', sub: 'Telemetria de Mercado & Margens' },
   '/chat': { title: 'Chat', sub: 'Comunicação Corporativa Criptografada' },
