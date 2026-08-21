@@ -113,26 +113,30 @@ export async function POST(req: NextRequest) {
       body.geminiModel ||
       'gemini-1.5-flash';
 
-    const promptInstructions = `Você é o Assistente Executivo de Inteligência Artificial do Yggdron Manager (Command Center Industrial & Corporativo).
-Sua missão é analisar o relato operacional gravado/falado pelo colaborador e produzir um diagnóstico analítico detalhado e estruturado.
+    const promptInstructions = `Você é o Assistente Executivo de Inteligência Artificial e Transcritor Oficial do Yggdron Manager (Command Center Industrial & Corporativo).
 
-ESTRUTURA DE ANÁLISE OBRIGATÓRIA:
-1. "thoughtProcess": Exponha a cadeia de raciocínio analítico detalhada (Deep Thinking passo a passo):
-   - Passo 1: Leitura e interpretação das intenções e atividades descritas pelo operador.
-   - Passo 2: Extração de entidades de tempo, métricas e recursos envolvidos.
-   - Passo 3: Avaliação de riscos, desvios operacionais e conformidade.
-   - Passo 4: Justificativa técnica para a classificação de status (GREEN, YELLOW ou RED).
-   - Passo 5: Elaboração das ações de contingência e recomendações executivas.
-2. "transcription": Transcrição literal do que foi falado/revisado pelo usuário.
-3. "summary": Síntese executiva clara em 1 ou 2 frases sintetizando a operação e o desfecho.
-4. "whatWasDone": Detalhamento estruturado e técnico das atividades realizadas.
-5. "durationTime": Tempo total citado ou estimado com base no relato (ex: "3h 30min", "45 minutos", etc).
-6. "resultImpact": Impacto operacional gerado (produtividade, segurança, continuidade operacional, custos).
+SUA TAREFA PRIMORDIAL:
+1. Se houver um arquivo de áudio anexado, OUÇA atentamente cada palavra falada e TRANSCREVA fielmente em Português do Brasil no campo "transcription".
+2. Se houver apenas texto ou texto parcial, use-o para complementar a interpretação.
+3. Analise criticamente as atividades descritas e estruture o diagnóstico executivo.
+
+ESTRUTURA DE ANÁLISE OBRIGATÓRIA (JSON estrito):
+1. "thoughtProcess": Cadeia de raciocínio analítico (Deep Thinking passo a passo):
+   - Passo 1: Transcrição fonética e compreensão das falas do operador.
+   - Passo 2: Extração de entidades temporais, métricas de produção, máquinas ou valores.
+   - Passo 3: Avaliação de riscos, gargalos operacionais e conformidade.
+   - Passo 4: Justificativa técnica da classificação (GREEN, YELLOW ou RED).
+   - Passo 5: Recomendações e plano de ação imediato.
+2. "transcription": Transcrição literal e completa de tudo o que foi falado no áudio. NUNCA deixe vazio se houver fala no áudio.
+3. "summary": Síntese executiva clara em 1 a 2 frases com foco no resultado final.
+4. "whatWasDone": Detalhamento estruturado em tópicos (bullet points) das atividades realizadas.
+5. "durationTime": Tempo total citado ou estimado (ex: "3h 30min", "45 minutos", "Turno completo 8h").
+6. "resultImpact": Impacto operacional gerado (produtividade, segurança, custos, mitigação de riscos).
 7. "suggestedArea": Área ou departamento correspondente (ex: "Fundição & Manutenção", "Operações Industriais", "Logística & Frota", "Financeiro & Controladoria", "Comercial & Vendas", "TI & Infraestrutura").
-8. "suggestedStatus": Severidade operacional estrita ("GREEN" para operação nominal e concluída, "YELLOW" para atenção/parcial/atrasos, "RED" para parada crítica/acidente/quebra/falha grave).
-9. "nextSteps": Lista de 2 a 4 ações recomendadas e próximos passos operacionais.
+8. "suggestedStatus": Classificação estrita ("GREEN" para nominal/sucesso, "YELLOW" para atenção/atraso/pendência, "RED" para parada crítica/quebra/acidente/falha grave).
+9. "nextSteps": Lista de 2 a 4 ações recomendadas para os próximos passos operacionais.
 
-Retorne OBRIGATORIAMENTE um JSON estrito:
+Retorne OBRIGATORIAMENTE APENAS um JSON válido no seguinte formato:
 {
   "thoughtProcess": "...",
   "transcription": "...",
@@ -145,7 +149,7 @@ Retorne OBRIGATORIAMENTE um JSON estrito:
   "nextSteps": ["...", "..."]
 }`;
 
-    // 1. Tenta chamada ao Google Gemini com o áudio ou texto real
+    // 1. Tenta chamada ao Google Gemini com áudio multimodal real ou texto
     if (geminiKey) {
       const modelsToTry = [
         requestedModel,
@@ -154,27 +158,55 @@ Retorne OBRIGATORIAMENTE um JSON estrito:
         'gemini-1.5-pro',
       ].filter((v, i, a) => a.indexOf(v) === i);
 
+      // Prepara dados de áudio se existirem
+      let cleanBase64 = '';
+      let cleanMime = 'audio/webm';
+
+      if (audioBase64 && typeof audioBase64 === 'string') {
+        cleanBase64 = audioBase64.replace(/^data:[^;]+;base64,/, '').trim();
+        if (mimeType) {
+          cleanMime = mimeType.split(';')[0].trim().toLowerCase();
+        }
+        // Normaliza mime types móveis comuns
+        if (cleanMime === 'audio/m4a' || cleanMime === 'audio/x-m4a') {
+          cleanMime = 'audio/mp4';
+        }
+      }
+
       for (const modelCandidate of modelsToTry) {
         try {
           const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelCandidate}:generateContent?key=${geminiKey}`;
 
           const userText = rawTextFallback?.trim() || '';
 
-          const userPrompt = `Analise detalhadamente este relato falado por um operador/colaborador e gere o relatório executivo corporativo:
+          // Monta as partes de conteúdo (Multimodal: Áudio + Prompt de Texto)
+          const parts: any[] = [];
 
-Relato do Colaborador:
-"${userText}"
-
-${promptInstructions}`;
+          if (cleanBase64 && cleanBase64.length > 50) {
+            parts.push({
+              inlineData: {
+                mimeType: cleanMime,
+                data: cleanBase64,
+              },
+            });
+            parts.push({
+              text: `Transcreva todo o áudio falado neste arquivo e gere o relatório executivo corporativo completo.\n${userText ? `Texto auxiliar detectado: "${userText}"\n` : ''}\n${promptInstructions}`,
+            });
+          } else {
+            parts.push({
+              text: `Analise detalhadamente este relato falado por um operador/colaborador e gere o relatório executivo corporativo:\n\nRelato do Colaborador:\n"${userText || 'Nenhum texto informado'}"\n\n${promptInstructions}`,
+            });
+          }
 
           const response = await fetch(geminiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+              contents: [{ role: 'user', parts }],
               generationConfig: {
                 temperature: 0.2,
                 topP: 0.95,
+                responseMimeType: 'application/json',
               },
             }),
           });
@@ -185,7 +217,6 @@ ${promptInstructions}`;
             let rawResponseText = candidate?.content?.parts?.[0]?.text;
 
             if (rawResponseText) {
-              // Limpa blocos markdown ```json ... ``` se o modelo retornar
               rawResponseText = rawResponseText
                 .replace(/^```json\s*/i, '')
                 .replace(/^```\s*/i, '')
@@ -193,10 +224,12 @@ ${promptInstructions}`;
                 .trim();
 
               const parsed = JSON.parse(rawResponseText);
+              const finalTranscription = parsed.transcription || userText || 'Áudio processado e transcrito com sucesso.';
+
               const report: StructuredAudioReport = {
-                transcription: userText || parsed.transcription || 'Relato processado por IA.',
-                summary: parsed.summary || 'Resumo executivo do relato.',
-                whatWasDone: parsed.whatWasDone || userText,
+                transcription: finalTranscription,
+                summary: parsed.summary || 'Resumo executivo do relato operacional.',
+                whatWasDone: parsed.whatWasDone || finalTranscription,
                 durationTime: parsed.durationTime || 'Conforme relato',
                 resultImpact: parsed.resultImpact || 'Operação registrada com sucesso.',
                 suggestedArea: parsed.suggestedArea || 'Operações',
@@ -206,13 +239,16 @@ ${promptInstructions}`;
                     : parsed.suggestedStatus === 'YELLOW'
                     ? 'YELLOW'
                     : 'GREEN',
-                nextSteps: Array.isArray(parsed.nextSteps) && parsed.nextSteps.length > 0
-                  ? parsed.nextSteps
-                  : ['Acompanhar fechamento no painel'],
+                nextSteps:
+                  Array.isArray(parsed.nextSteps) && parsed.nextSteps.length > 0
+                    ? parsed.nextSteps
+                    : ['Acompanhar fechamento no painel corporativo'],
                 processedAt: new Date().toISOString(),
                 sourceType: audioBase64 ? 'live_mic' : 'upload',
                 isFallback: false,
-                thoughtProcess: parsed.thoughtProcess || `1. Gemini (${modelCandidate}) analisou o relato com sucesso.\n2. Principais tópicos operacionais extraídos.\n3. Estruturação concluída.`,
+                thoughtProcess:
+                  parsed.thoughtProcess ||
+                  `1. Gemini (${modelCandidate}) ouviu e transcreveu o áudio com sucesso.\n2. Principais tópicos operacionais extraídos.\n3. Estruturação concluída.`,
               };
 
               return NextResponse.json({
@@ -231,7 +267,7 @@ ${promptInstructions}`;
       }
     }
 
-    // 2. Extração semântica analítica e estruturação inteligente do relato falado
+    // 2. Extração semântica analítica e estruturação inteligente do relato falado (Modo de Contingência)
     const userSpokenText = rawTextFallback?.trim();
 
     if (userSpokenText) {
@@ -275,12 +311,12 @@ ${promptInstructions}`;
       }
 
       const nextStepsList = [
-        'Priorizar transmissão dos relatórios pendentes ao Financeiro na abertura do turno',
+        'Priorizar transmissão dos relatórios pendentes na abertura do turno',
         'Validar recebimento e conformidade dos dados com o gestor responsável',
         'Atualizar status no Fechamento Diário da área',
       ];
 
-      const thoughtProcessFormatted = `1. Leitura Semântica: Identificado término das atividades diárias gerais com observação de pendência pontual.\n2. Diagnóstico de Severidade: Atribuído status ${status} devido à reprogramação de entrega de relatório para amanhã.\n3. Roteamento Setorial: Vinculado ao departamento de ${suggestedArea}.\n4. Síntese Gerencial: Estruturado em tópicos executivos para facilidade de auditoria e prestação de contas.`;
+      const thoughtProcessFormatted = `1. Leitura Semântica: Processado o relato operacional falado pelo colaborador.\n2. Diagnóstico de Severidade: Atribuído status ${status}.\n3. Roteamento Setorial: Vinculado ao departamento de ${suggestedArea}.\n4. Síntese Gerencial: Estruturado em tópicos executivos para auditoria e prestação de contas.`;
 
       const dynamicReport: StructuredAudioReport = {
         transcription: userSpokenText,
@@ -300,7 +336,29 @@ ${promptInstructions}`;
       return NextResponse.json({
         success: true,
         report: dynamicReport,
-        engine: 'gemini-1.5-flash',
+        engine: 'contingencia_local',
+      });
+    }
+
+    // Se houver áudio bruto mas nenhuma API key configurada no servidor/cliente
+    if (audioBase64) {
+      return NextResponse.json({
+        success: true,
+        report: {
+          transcription: 'Áudio capturado pelo microfone do celular. Para transcrição acústica em tempo real, configure sua chave gratuita do Google Gemini em Configurações.',
+          summary: 'Áudio gravado com sucesso no dispositivo móvel.',
+          whatWasDone: '• Gravação de voz capturada via MediaRecorder móvel.\n• Aguardando conexão com motor de transcrição Gemini ou digitação do texto.',
+          durationTime: 'Áudio gravado',
+          resultImpact: 'Gravação arquivada no dispositivo.',
+          suggestedArea: 'Operações Gerais',
+          suggestedStatus: 'GREEN',
+          nextSteps: ['Adicionar chave do Gemini em Configurações ou digitar o relato'],
+          processedAt: new Date().toISOString(),
+          thoughtProcess: '1. Áudio móvel recebido com sucesso.\n2. Chave Gemini necessária para speech-to-text em nuvem.',
+          sourceType: 'live_mic',
+          isFallback: true,
+        },
+        engine: 'offline_recorder',
       });
     }
 

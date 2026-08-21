@@ -133,245 +133,294 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
  }, [audioUrl]);
 
  // Iniciar Gravação com Captura de Microfone Real e SpeechRecognition
- const startRecording = async () => {
- setMicError('');
- setLiveTranscript('');
- setLiveVolume(0);
- speechAccumulatedRef.current = '';
+  const startRecording = async () => {
+    setMicError('');
+    setLiveTranscript('');
+    setLiveVolume(0);
+    setReport(null);
+    setIsConfirmingText(false);
+    speechAccumulatedRef.current = '';
 
- try {
- // 1. Acesso ao Microfone Real via WebRTC
- const stream = await navigator.mediaDevices.getUserMedia({
- audio: {
- echoCancellation: true,
- noiseSuppression: true,
- autoGainControl: true,
- },
- });
+    try {
+      // 1. Acesso ao Microfone Real com fallback para dispositivos móveis
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch (err) {
+        // Fallback básico para navegadores móveis mais restritivos
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
 
- // Medidor de volume de áudio em tempo real (Visual feedback)
- try {
- const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
- if (AudioCtx) {
- const audioCtx = new AudioCtx();
- audioContextRef.current = audioCtx;
- const source = audioCtx.createMediaStreamSource(stream);
- const analyser = audioCtx.createAnalyser();
- analyser.fftSize = 256;
- source.connect(analyser);
- const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      // Medidor de volume de áudio em tempo real (Visual feedback)
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const audioCtx = new AudioCtx();
+          audioContextRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
- const updateVolume = () => {
- if (!isRecording && audioChunksRef.current.length === 0) return;
- analyser.getByteFrequencyData(dataArray);
- let sum = 0;
- for (let i = 0; i < dataArray.length; i++) {
- sum += dataArray[i];
- }
- const average = sum / dataArray.length;
- setLiveVolume(Math.min(100, Math.round(average * 1.5)));
- animFrameRef.current = requestAnimationFrame(updateVolume);
- };
- updateVolume();
- }
- } catch (e) {
- console.warn('AudioContext volume meter não suportado:', e);
- }
+          const updateVolume = () => {
+            if (!isRecording && audioChunksRef.current.length === 0) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / dataArray.length;
+            setLiveVolume(Math.min(100, Math.round(average * 1.5)));
+            animFrameRef.current = requestAnimationFrame(updateVolume);
+          };
+          updateVolume();
+        }
+      } catch (e) {
+        console.warn('AudioContext volume meter não suportado:', e);
+      }
 
- // 2. Web Speech Recognition para transcrição live simultânea
- const SpeechRecognition =
- (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      // 2. Web Speech Recognition para transcrição live simultânea (quando disponível)
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
- if (SpeechRecognition) {
- try {
- const recognition = new SpeechRecognition();
- recognition.lang = 'pt-BR';
- recognition.continuous = true;
- recognition.interimResults = true;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.lang = 'pt-BR';
+          recognition.continuous = true;
+          recognition.interimResults = true;
 
- recognition.onresult = (event: any) => {
- let interim = '';
- for (let i = event.resultIndex; i < event.results.length; ++i) {
- if (event.results[i].isFinal) {
- speechAccumulatedRef.current += event.results[i][0].transcript + ' ';
- } else {
- interim += event.results[i][0].transcript;
- }
- }
- const fullSpoken = (speechAccumulatedRef.current + ' ' + interim).trim();
- setLiveTranscript(fullSpoken);
- };
+          recognition.onresult = (event: any) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                speechAccumulatedRef.current += event.results[i][0].transcript + ' ';
+              } else {
+                interim += event.results[i][0].transcript;
+              }
+            }
+            const fullSpoken = (speechAccumulatedRef.current + ' ' + interim).trim();
+            setLiveTranscript(fullSpoken);
+          };
 
- recognition.onerror = (e: any) => {
- console.warn('SpeechRecognition aviso:', e);
- };
+          recognition.onerror = (e: any) => {
+            console.warn('SpeechRecognition aviso:', e);
+          };
 
- recognition.start();
- recognitionRef.current = recognition;
- } catch (e) {
- console.warn('Falha ao inicializar Web Speech Recognition:', e);
- }
- }
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('Web Speech Recognition não ativo no ambiente atual:', e);
+        }
+      }
 
- // 3. MediaRecorder para empacotar o arquivo de áudio binário
- audioChunksRef.current = [];
- const supportedMimeTypes = [
- 'audio/webm;codecs=opus',
- 'audio/webm',
- 'audio/ogg;codecs=opus',
- 'audio/mp4',
- '',
- ];
- const selectedMime = supportedMimeTypes.find(
- (t) => !t || MediaRecorder.isTypeSupported(t)
- ) || '';
+      // 3. MediaRecorder para empacotar o áudio binário gravado no celular
+      audioChunksRef.current = [];
+      const supportedMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4;codecs=mp4a.40.2',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/wav',
+        '',
+      ];
+      const selectedMime = supportedMimeTypes.find(
+        (t) => !t || (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t))
+      ) || '';
 
- const mediaRecorder = selectedMime
- ? new MediaRecorder(stream, { mimeType: selectedMime })
- : new MediaRecorder(stream);
- mediaRecorderRef.current = mediaRecorder;
+      const mediaRecorder = selectedMime
+        ? new MediaRecorder(stream, { mimeType: selectedMime })
+        : new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
 
- mediaRecorder.ondataavailable = (event) => {
- if (event.data && event.data.size > 0) {
- audioChunksRef.current.push(event.data);
- }
- };
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
- mediaRecorder.onstop = () => {
- const finalMime = mediaRecorder.mimeType || 'audio/webm';
- const audioBlobResult = new Blob(audioChunksRef.current, {
- type: finalMime,
- });
- setAudioBlob(audioBlobResult);
- const url = URL.createObjectURL(audioBlobResult);
- setAudioUrl(url);
+      mediaRecorder.onstop = () => {
+        const finalMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+        const audioBlobResult = new Blob(audioChunksRef.current, {
+          type: finalMime,
+        });
+        setAudioBlob(audioBlobResult);
+        const url = URL.createObjectURL(audioBlobResult);
+        setAudioUrl(url);
 
- // Desliga tracks de áudio do microfone
- stream.getTracks().forEach((track) => track.stop());
+        // Desliga tracks de áudio do microfone para economizar bateria
+        stream.getTracks().forEach((track) => track.stop());
 
- // Abre tela de confirmação e edição da fala capturada
- const finalRecordedText = speechAccumulatedRef.current.trim() || liveTranscript.trim() || '';
- handleRecordingFinished(audioBlobResult, finalMime, finalRecordedText);
- };
+        const finalSpoken = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
+        processRecordedAudioAndReport(audioBlobResult, finalMime, finalSpoken);
+      };
 
- mediaRecorder.start(250);
- setIsRecording(true);
- setRecordingSeconds(0);
+      mediaRecorder.start(250);
+      setIsRecording(true);
+      setRecordingSeconds(0);
 
- timerIntervalRef.current = setInterval(() => {
- setRecordingSeconds((prev) => prev + 1);
- }, 1000);
- } catch (err: any) {
- console.error('Erro de acesso ao microfone:', err);
- setMicError(
- 'Permissão de microfone negada ou não encontrada. Verifique as permissões do navegador ou faça upload de um arquivo de áudio.'
- );
- setIsRecording(false);
- }
- };
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error('Erro de acesso ao microfone:', err);
+      setMicError(
+        'Permissão de microfone negada ou não encontrada. Verifique as permissões do navegador ou faça upload de um arquivo de áudio.'
+      );
+      setIsRecording(false);
+    }
+  };
 
- // Estado de Confirmação e Edição da Fala
- const [transcriptionToConfirm, setTranscriptionToConfirm] = useState<string>('');
- const [isConfirmingText, setIsConfirmingText] = useState(false);
- const [keyAlertMessage, setKeyAlertMessage] = useState<string>('');
+  // Estado de Confirmação e Edição da Fala
+  const [transcriptionToConfirm, setTranscriptionToConfirm] = useState<string>('');
+  const [isConfirmingText, setIsConfirmingText] = useState(false);
+  const [keyAlertMessage, setKeyAlertMessage] = useState<string>('');
 
- // Parar Gravação Real
- const stopRecording = () => {
- if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
- if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
- setIsRecording(false);
+  // Parar Gravação Real
+  const stopRecording = () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setIsRecording(false);
 
- // Captura imediatamente todo o texto falado até o momento
- const capturedSpokenText = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
 
- if (recognitionRef.current) {
- try {
- recognitionRef.current.stop();
- } catch (e) {}
- }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
 
- if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
- mediaRecorderRef.current.stop();
- }
+  // Processa o áudio capturado (speech-to-text multimodal + estruturação de relatório)
+  const processRecordedAudioAndReport = async (blob: Blob, mime: string, liveText: string) => {
+    setIsProcessing(true);
+    setProcessStatusText('Gemini transcrevendo o áudio do microfone e estruturando relatório...');
+    setKeyAlertMessage('');
 
- // Fixa o texto na tela de confirmação e abre para edição
- setTranscriptionToConfirm(capturedSpokenText);
- setIsConfirmingText(true);
- };
+    try {
+      let base64Audio = '';
+      if (blob && blob.size > 0) {
+        base64Audio = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string) || '');
+          reader.readAsDataURL(blob);
+        });
+      }
 
- // Callback chamado quando o MediaRecorder encerra (salva o áudio sem sobrescrever o texto que você já falou)
- const handleRecordingFinished = async (blob: Blob, mime: string, liveText: string) => {
- // Se o usuário já tem texto na caixa de confirmação ou no liveTranscript, NUNCA sobrescreva!
- if (transcriptionToConfirm && transcriptionToConfirm.trim()) {
- setIsConfirmingText(true);
- return;
- }
+      const clientApiKey = getStoredGeminiKey();
+      const clientModel = getStoredGeminiModel() || 'gemini-1.5-flash';
 
- const textToShow = liveText.trim() || speechAccumulatedRef.current.trim() || liveTranscript.trim();
- if (textToShow) {
- setTranscriptionToConfirm(textToShow);
- setIsConfirmingText(true);
- return;
- }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
- // Apenas se o Speech Recognition não capturou nenhuma palavra tentamos transcrever o áudio
- if (blob && blob.size > 0) {
- setProcessStatusText('Gemini 1.5 Flash transcrevendo o áudio capturado...');
- setIsProcessing(true);
- try {
- const clientApiKey = getStoredGeminiKey();
- const clientModel = getStoredGeminiModel() || 'gemini-1.5-flash';
+      const res = await fetch('/api/ai/audio-report', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clientApiKey ? { 'x-gemini-api-key': clientApiKey } : {}),
+          'x-gemini-model': clientModel,
+        },
+        body: JSON.stringify({
+          audioBase64: base64Audio,
+          mimeType: mime || 'audio/webm',
+          rawTextFallback: liveText,
+        }),
+      });
+      clearTimeout(timeoutId);
 
- const base64Audio = await new Promise<string>((resolve) => {
- const reader = new FileReader();
- reader.onloadend = () => resolve((reader.result as string) || '');
- reader.readAsDataURL(blob);
- });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.report) {
+          const processedReport: StructuredAudioReport = {
+            ...data.report,
+            engineUsed: data.engine || clientModel,
+          };
+          setReport(processedReport);
+          setTranscriptionToConfirm(processedReport.transcription);
 
- const res = await fetch('/api/ai/audio-report', {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- ...(clientApiKey ? { 'x-gemini-api-key': clientApiKey } : {}),
- 'x-gemini-model': clientModel,
- },
- body: JSON.stringify({
- audioBase64: base64Audio,
- mimeType: mime || 'audio/webm',
- }),
- });
+          // Salva automaticamente na gaveta de relatórios do funcionário
+          saveAudioReport({
+            userId: currentUser.id,
+            userName: currentUser.name,
+            userRole: currentUser.role,
+            userDepartment: currentUser.department || processedReport.suggestedArea || 'Operações',
+            areaName: currentUser.department || processedReport.suggestedArea || 'Operações',
+            transcription: processedReport.transcription,
+            summary: processedReport.summary,
+            whatWasDone: processedReport.whatWasDone,
+            durationTime: processedReport.durationTime,
+            resultImpact: processedReport.resultImpact,
+            suggestedStatus: processedReport.suggestedStatus,
+            nextSteps: processedReport.nextSteps,
+            thoughtProcess: processedReport.thoughtProcess,
+            engineUsed: processedReport.engineUsed,
+            syncedToDailyClosing: false,
+          });
 
- if (res.ok) {
- const data = await res.json();
- if (data.report && data.report.transcription && !data.report.transcription.includes('Nenhuma voz')) {
- setTranscriptionToConfirm(data.report.transcription);
- setIsConfirmingText(true);
- return;
- }
- }
- } catch (e) {
- console.warn('Erro ao transcrever com Gemini antes da edição:', e);
- } finally {
- setIsProcessing(false);
- }
- }
+          if (!clientApiKey && !process.env.GEMINI_API_KEY) {
+            setKeyAlertMessage(
+              'Aviso: Modo de Contingência Ativado. Configure sua chave gratuita do Google Gemini em Configurações para transcrição em nuvem ilimitada.'
+            );
+          }
+          setIsProcessing(false);
+          return;
+        }
+      }
+    } catch (e: any) {
+      console.warn('Erro ao processar áudio com Gemini:', e);
+      // Fallback semântico se houver texto
+      if (liveText.trim()) {
+        const fallbackText = liveText.trim();
+        const localReport: StructuredAudioReport = {
+          transcription: fallbackText,
+          summary: `Atividade operacional registrada: ${fallbackText.substring(0, 80)}...`,
+          whatWasDone: `• Execução e monitoramento de rotina do setor\n• Relato falado capturado pelo dispositivo móvel`,
+          durationTime: 'Turno padrão (8h)',
+          resultImpact: 'Operação mantida em conformidade com parâmetros de qualidade',
+          suggestedArea: currentUser.department || 'Operações',
+          suggestedStatus: 'GREEN',
+          nextSteps: ['Acompanhamento de rotinas e fechamento diário'],
+          processedAt: new Date().toISOString(),
+          sourceType: 'live_mic',
+          isFallback: true,
+          engineUsed: 'Contingência Semântica Local',
+        };
+        setReport(localReport);
+        setTranscriptionToConfirm(fallbackText);
+      } else {
+        setTranscriptionToConfirm('');
+        setIsConfirmingText(true);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
- // Se nada mesmo foi capturado, abre vazio para o usuário ditar ou digitar
- setIsConfirmingText(true);
- };
+  // Upload de Arquivo de Áudio
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
- // Upload de Arquivo de Áudio
- const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
- const file = e.target.files?.[0];
- if (!file) return;
+    setMicError('');
+    const url = URL.createObjectURL(file);
+    setAudioBlob(file);
+    setAudioUrl(url);
 
- setMicError('');
- const url = URL.createObjectURL(file);
- setAudioBlob(file);
- setAudioUrl(url);
- 
- handleRecordingFinished(file, file.type || 'audio/mp3', '');
- };
+    processRecordedAudioAndReport(file, file.type || 'audio/mp3', '');
+  };
 
  // Executa o processamento do texto confirmado/editado pelo usuário com Gemini 1.5 Flash
  const handleExecuteGeminiProcess = async (textToSend: string) => {

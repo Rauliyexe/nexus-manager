@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Check, ShieldCheck, AlertTriangle, AlertCircle, Sparkles, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Check, ShieldCheck, AlertTriangle, AlertCircle, Sparkles, RefreshCw, Mic, Square } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { DailyStatusType } from '@/lib/types/nexus';
+import { getStoredGeminiKey, getStoredGeminiModel } from '@/lib/services/geminiClient';
 
 interface DailyClosingModalProps {
  isOpen: boolean;
@@ -27,133 +28,290 @@ export const DailyClosingModal: React.FC<DailyClosingModalProps> = ({
  const [successMessage, setSuccessMessage] = useState('');
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [isVoiceLoading, setIsVoiceLoading] = useState(false);
+ const [isRecording, setIsRecording] = useState(false);
+ const [recordingSeconds, setRecordingSeconds] = useState(0);
+
+ const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+ const audioChunksRef = useRef<Blob[]>([]);
+ const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+ useEffect(() => {
+   return () => {
+     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+   };
+ }, []);
 
  if (!isOpen) return null;
 
+ // Iniciar Gravação de Voz Direta no Modal (Mobile PWA & Desktop)
+ const startVoiceRecording = async () => {
+   setErrorMessage('');
+   setIsRecording(true);
+   setRecordingSeconds(0);
+   audioChunksRef.current = [];
+
+   try {
+     let stream: MediaStream;
+     try {
+       stream = await navigator.mediaDevices.getUserMedia({
+         audio: {
+           echoCancellation: true,
+           noiseSuppression: true,
+           autoGainControl: true,
+         },
+       });
+     } catch (e) {
+       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+     }
+
+     const supportedMimeTypes = [
+       'audio/webm;codecs=opus',
+       'audio/webm',
+       'audio/mp4;codecs=mp4a.40.2',
+       'audio/mp4',
+       'audio/aac',
+       'audio/ogg;codecs=opus',
+       'audio/ogg',
+       '',
+     ];
+     const selectedMime = supportedMimeTypes.find(
+       (t) => !t || (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t))
+     ) || '';
+
+     const mediaRecorder = selectedMime
+       ? new MediaRecorder(stream, { mimeType: selectedMime })
+       : new MediaRecorder(stream);
+     mediaRecorderRef.current = mediaRecorder;
+
+     mediaRecorder.ondataavailable = (event) => {
+       if (event.data && event.data.size > 0) {
+         audioChunksRef.current.push(event.data);
+       }
+     };
+
+     mediaRecorder.onstop = async () => {
+       const finalMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+       const audioBlobResult = new Blob(audioChunksRef.current, {
+         type: finalMime,
+       });
+
+       // Desliga tracks de áudio
+       stream.getTracks().forEach((track) => track.stop());
+
+       setIsRecording(false);
+       setIsVoiceLoading(true);
+
+       try {
+         const base64Audio = await new Promise<string>((resolve) => {
+           const reader = new FileReader();
+           reader.onloadend = () => resolve((reader.result as string) || '');
+           reader.readAsDataURL(audioBlobResult);
+         });
+
+         const clientApiKey = getStoredGeminiKey();
+         const clientModel = getStoredGeminiModel() || 'gemini-1.5-flash';
+
+         const res = await fetch('/api/ai/audio-report', {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             ...(clientApiKey ? { 'x-gemini-api-key': clientApiKey } : {}),
+             'x-gemini-model': clientModel,
+           },
+           body: JSON.stringify({
+             audioBase64: base64Audio,
+             mimeType: finalMime,
+           }),
+         });
+
+         if (res.ok) {
+           const data = await res.json();
+           if (data.report) {
+             setJustification(
+               `[Relato por Voz IA]: ${data.report.summary || data.report.transcription} | Duração: ${data.report.durationTime} | Impacto: ${data.report.resultImpact}`
+             );
+             setSelectedStatus(data.report.suggestedStatus || 'GREEN');
+           }
+         }
+       } catch (err) {
+         console.warn('Erro ao processar áudio no fechamento:', err);
+       } finally {
+         setIsVoiceLoading(false);
+       }
+     };
+
+     mediaRecorder.start(250);
+     timerIntervalRef.current = setInterval(() => {
+       setRecordingSeconds((prev) => prev + 1);
+     }, 1000);
+   } catch (err) {
+     console.error('Erro de permissão de microfone no modal:', err);
+     setErrorMessage('Permissão de microfone negada. Verifique as configurações do navegador no celular.');
+     setIsRecording(false);
+   }
+ };
+
+ // Parar Gravação
+ const stopVoiceRecording = () => {
+   if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+   if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+     mediaRecorderRef.current.stop();
+   }
+   setIsRecording(false);
+ };
+
  const handleVoiceQuickFill = async () => {
- setIsVoiceLoading(true);
- try {
- const res = await fetch('/api/ai/audio-report', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ presetId: 'manutencao_forno' }),
- });
- if (res.ok) {
- const data = await res.json();
- if (data.report) {
- setJustification(
- `[Áudio IA]: ${data.report.summary} | Duração: ${data.report.durationTime} | Impacto: ${data.report.resultImpact}`
- );
- setSelectedStatus(data.report.suggestedStatus || 'GREEN');
- }
- }
- } catch (e) {
- console.warn('Erro voice quick fill:', e);
- } finally {
- setIsVoiceLoading(false);
- }
+   setIsVoiceLoading(true);
+   try {
+     const res = await fetch('/api/ai/audio-report', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ presetId: 'manutencao_forno' }),
+     });
+     if (res.ok) {
+       const data = await res.json();
+       if (data.report) {
+         setJustification(
+           `[Áudio IA]: ${data.report.summary} | Duração: ${data.report.durationTime} | Impacto: ${data.report.resultImpact}`
+         );
+         setSelectedStatus(data.report.suggestedStatus || 'GREEN');
+       }
+     }
+   } catch (e) {
+     console.warn('Erro voice quick fill:', e);
+   } finally {
+     setIsVoiceLoading(false);
+   }
  };
 
  const handleSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
- setErrorMessage('');
+   e.preventDefault();
+   setErrorMessage('');
 
- if ((selectedStatus === 'YELLOW' || selectedStatus === 'RED') && !justification.trim()) {
- setErrorMessage('Para status Atenção ou Crítico, a justificativa é obrigatória.');
- return;
- }
+   if ((selectedStatus === 'YELLOW' || selectedStatus === 'RED') && !justification.trim()) {
+     setErrorMessage('Para status Atenção ou Crítico, a justificativa é obrigatória.');
+     return;
+   }
 
- setIsSubmitting(true);
+   setIsSubmitting(true);
 
- try {
- await submitDailyStatus(selectedAreaId, selectedStatus, justification.trim());
+   try {
+     await submitDailyStatus(selectedAreaId, selectedStatus, justification.trim());
 
- setSuccessMessage(
- 'Status registrado com sucesso! Gestores notificados.'
- );
+     setSuccessMessage(
+       'Status registrado com sucesso! Gestores notificados.'
+     );
 
- setTimeout(() => {
- setSuccessMessage('');
- setIsSubmitting(false);
- onClose();
- }, 1200);
- } catch (err) {
- setErrorMessage('Erro ao registrar fechamento.');
- setIsSubmitting(false);
- }
+     setTimeout(() => {
+       setSuccessMessage('');
+       setIsSubmitting(false);
+       onClose();
+     }, 1200);
+   } catch (err) {
+     setErrorMessage('Erro ao registrar fechamento.');
+     setIsSubmitting(false);
+   }
+ };
+
+ const formatSecs = (secs: number) => {
+   const m = Math.floor(secs / 60);
+   const s = secs % 60;
+   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
  };
 
  return (
- <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 font-sans">
- <div
- className="fixed inset-0"
- onClick={onClose}
- />
- <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-xs z-10 animate-in slide-in-from-bottom duration-250 max-h-[92vh] flex flex-col card-shadow">
- {/* Header */}
- <div className="p-4 border-b border-[#E2E8E3] dark:border-[#1E3125] flex items-center justify-between bg-[#F5F7F5] dark:bg-[#0B120E]">
- <div>
- <h2 className="font-bold text-[#1A281E] dark:text-slate-100 uppercase text-xs sm:text-sm flex items-center space-x-2">
- <span>Fechamento do Dia</span>
- <span className="w-2 h-2 rounded-full bg-[#4D7C5D] animate-pulse" />
- </h2>
- <p className="text-[11px] text-[#5C6E62] dark:text-slate-400 mt-0.5">
- Atualize o status operacional da sua área hoje.
- </p>
- </div>
- <button
- onClick={onClose}
- className="p-1.5 rounded-lg text-[#8FA595] hover:text-[#1A281E] dark:hover:text-slate-200 hover:bg-[#E2E8E3] dark:hover:bg-[#1E3125] transition-colors cursor-pointer"
- >
- <X className="w-4 h-4" />
- </button>
- </div>
-
- {/* Highlight Voice AI Action Banner */}
- <div className="px-5 pt-4">
-   <div className="p-3 bg-gradient-to-r from-[#1B3026] to-[#274437] dark:from-[#16281F] dark:to-[#1F3A2B] rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs border border-[#3B6650]/40">
-     <div className="flex items-center space-x-2.5">
-       <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-300">
-         <Sparkles className="w-4 h-4" />
+   <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200 font-sans">
+     <div
+       className="fixed inset-0"
+       onClick={onClose}
+     />
+     <div className="bg-white dark:bg-[#121D16] border border-[#E2E8E3] dark:border-[#1E3125] rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-xs z-10 animate-in slide-in-from-bottom duration-250 max-h-[92vh] flex flex-col card-shadow">
+       {/* Header */}
+       <div className="p-4 border-b border-[#E2E8E3] dark:border-[#1E3125] flex items-center justify-between bg-[#F5F7F5] dark:bg-[#0B120E]">
+         <div>
+           <h2 className="font-bold text-[#1A281E] dark:text-slate-100 uppercase text-xs sm:text-sm flex items-center space-x-2">
+             <span>Fechamento do Dia</span>
+             <span className="w-2 h-2 rounded-full bg-[#4D7C5D] animate-pulse" />
+           </h2>
+           <p className="text-[11px] text-[#5C6E62] dark:text-slate-400 mt-0.5">
+             Atualize o status operacional da sua área hoje.
+           </p>
+         </div>
+         <button
+           onClick={onClose}
+           className="p-1.5 rounded-lg text-[#8FA595] hover:text-[#1A281E] dark:hover:text-slate-200 hover:bg-[#E2E8E3] dark:hover:bg-[#1E3125] transition-colors cursor-pointer"
+         >
+           <X className="w-4 h-4" />
+         </button>
        </div>
-       <div>
-         <p className="text-xs font-bold leading-tight flex items-center space-x-1.5">
-           <span>Ditar Relato com IA Valkyra</span>
-           <span className="px-1.5 py-0.2 rounded bg-emerald-400 text-[#1B3026] text-[9px] font-black uppercase">
-             RÁPIDO
-           </span>
-         </p>
-         <p className="text-[10px] text-emerald-100/80 leading-tight mt-0.5">
-           Fale o que foi feito hoje e preencha automaticamente
-         </p>
+
+       {/* Highlight Voice AI Action Banner */}
+       <div className="px-5 pt-4">
+         <div className="p-3 bg-gradient-to-r from-[#1B3026] to-[#274437] dark:from-[#16281F] dark:to-[#1F3A2B] rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs border border-[#3B6650]/40">
+           <div className="flex items-center space-x-2.5">
+             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0 text-emerald-300">
+               <Sparkles className="w-4 h-4" />
+             </div>
+             <div>
+               <p className="text-xs font-bold leading-tight flex items-center space-x-1.5">
+                 <span>Ditar Relato por Voz (IA)</span>
+                 <span className="px-1.5 py-0.2 rounded bg-emerald-400 text-[#1B3026] text-[9px] font-black uppercase">
+                   PWA CELULAR
+                 </span>
+               </p>
+               <p className="text-[10px] text-emerald-100/80 leading-tight mt-0.5">
+                 {isRecording ? `Gravando áudio... (${formatSecs(recordingSeconds)})` : 'Grave pelo microfone e transcreva automaticamente'}
+               </p>
+             </div>
+           </div>
+
+           <div className="flex items-center space-x-1.5 self-end sm:self-auto">
+             <button
+               type="button"
+               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+               disabled={isVoiceLoading}
+               className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center space-x-1.5 cursor-pointer transition-all shadow-xs disabled:opacity-50 ${
+                 isRecording
+                   ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse'
+                   : 'bg-emerald-500 hover:bg-emerald-400 text-[#111D15]'
+               }`}
+             >
+               {isVoiceLoading ? (
+                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+               ) : isRecording ? (
+                 <Square className="w-3.5 h-3.5 fill-current" />
+               ) : (
+                 <Mic className="w-3.5 h-3.5" />
+               )}
+               <span>
+                 {isVoiceLoading
+                   ? 'Transcrevendo...'
+                   : isRecording
+                   ? `Parar (${formatSecs(recordingSeconds)})`
+                   : 'Gravar Voz'}
+               </span>
+             </button>
+
+             <button
+               type="button"
+               onClick={handleVoiceQuickFill}
+               disabled={isVoiceLoading || isRecording}
+               className="px-2 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-[11px] transition-colors"
+               title="Exemplo Rápido"
+             >
+               Demo
+             </button>
+
+             <a
+               href="/reports"
+               className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-[11px] flex items-center space-x-1 transition-colors"
+               title="Abrir Estúdio Completo de Áudio"
+             >
+               <span>Estúdio</span>
+             </a>
+           </div>
+         </div>
        </div>
-     </div>
-
-     <div className="flex items-center space-x-1.5 self-end sm:self-auto">
-       <button
-         type="button"
-         onClick={handleVoiceQuickFill}
-         disabled={isVoiceLoading}
-         className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-[#111D15] rounded-lg font-bold text-xs flex items-center space-x-1.5 cursor-pointer transition-all shadow-xs disabled:opacity-50"
-       >
-         {isVoiceLoading ? (
-           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-         ) : (
-           <Sparkles className="w-3.5 h-3.5" />
-         )}
-         <span>{isVoiceLoading ? 'Processando...' : 'Preencher por Voz'}</span>
-       </button>
-
-       <a
-         href="/reports"
-         className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium text-[11px] flex items-center space-x-1 transition-colors"
-         title="Abrir Estúdio Completo de Áudio"
-       >
-         <span>Estúdio</span>
-       </a>
-     </div>
-   </div>
- </div>
 
  {successMessage ? (
  <div className="p-8 text-center space-y-3">
