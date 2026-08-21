@@ -30,15 +30,30 @@ export default function ObligationsPage() {
     e.preventDefault();
     if (!title.trim()) return;
 
-    createObligation({
-      title: title.trim(),
-      description: description.trim(),
-      area_id: areaId,
-      frequency,
-      due_time: dueTime,
-      responsible_user_id: responsibleUserId,
-      active: true,
-    });
+    if (areaId === 'ALL_AREAS') {
+      // Criar tarefa para TODOS os setores
+      areas.forEach((a) => {
+        createObligation({
+          title: title.trim(),
+          description: description.trim(),
+          area_id: a.id,
+          frequency,
+          due_time: dueTime,
+          responsible_user_id: a.manager?.id || responsibleUserId,
+          active: true,
+        });
+      });
+    } else {
+      createObligation({
+        title: title.trim(),
+        description: description.trim(),
+        area_id: areaId,
+        frequency,
+        due_time: dueTime,
+        responsible_user_id: responsibleUserId,
+        active: true,
+      });
+    }
 
     setTitle('');
     setDescription('');
@@ -419,6 +434,10 @@ export default function ObligationsPage() {
                     onChange={(e) => setAreaId(e.target.value)}
                     className="w-full bg-[#EEF2EE] dark:bg-[#0B120E] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl p-2.5 text-[#111D15] dark:text-slate-100 focus:outline-none font-semibold cursor-pointer"
                   >
+                    <option value="ALL_AREAS" className="font-bold text-emerald-600 dark:text-emerald-400">
+                      ⚡ TODOS OS SETORES (GERAL - ATRIBUIR A TODA EMPRESA)
+                    </option>
+                    <option disabled>──────────</option>
                     {areas.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.name}

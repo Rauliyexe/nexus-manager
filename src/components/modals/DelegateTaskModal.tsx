@@ -77,31 +77,47 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
  };
 
  const handleSubmit = (e: React.FormEvent) => {
- e.preventDefault();
- if (!title.trim() || !description.trim()) return;
+    e.preventDefault();
+    if (!title.trim() || !description.trim()) return;
 
- setIsSubmitting(true);
+    setIsSubmitting(true);
 
- delegateTask({
- title: title.trim(),
- description: description.trim(),
- area_id: areaId,
- assigned_to_id: assignedToId || undefined,
- priority,
- due_date: dueDate,
- initial_comment: initialComment.trim() || undefined,
- attachments: attachments.length > 0 ? attachments : undefined,
- });
+    if (areaId === 'ALL_AREAS') {
+      // Cria a tarefa para todos os 10 setores da empresa
+      areas.forEach((a) => {
+        delegateTask({
+          title: title.trim(),
+          description: description.trim(),
+          area_id: a.id,
+          assigned_to_id: a.manager?.id || undefined,
+          priority,
+          due_date: dueDate,
+          initial_comment: initialComment.trim() || undefined,
+          attachments: attachments.length > 0 ? attachments : undefined,
+        });
+      });
+    } else {
+      delegateTask({
+        title: title.trim(),
+        description: description.trim(),
+        area_id: areaId,
+        assigned_to_id: assignedToId || undefined,
+        priority,
+        due_date: dueDate,
+        initial_comment: initialComment.trim() || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+    }
 
- setIsSubmitting(false);
- onClose();
+    setIsSubmitting(false);
+    onClose();
 
- // Reset form
- setTitle('');
- setDescription('');
- setInitialComment('');
- setAttachments([]);
- };
+    // Reset form
+    setTitle('');
+    setDescription('');
+    setInitialComment('');
+    setAttachments([]);
+  };
 
  const PRIORITIES: { id: TaskPriority; label: string; activeClass: string }[] = [
  { id: 'LOW', label: 'BAIXA', activeClass: 'bg-[#EBF2EE] dark:bg-[#1C2E24] text-[#2C523D] dark:text-[#76B38B] border-[#D4E8DB] dark:border-[#1E3125]' },
@@ -181,6 +197,10 @@ export const DelegateTaskModal: React.FC<DelegateTaskModalProps> = ({
  }}
  className="w-full px-3 py-2 bg-[#F5F7F5] dark:bg-[#0B120E] border border-[#E2E8E3] dark:border-[#1E3125] rounded-xl text-[#1A281E] dark:text-slate-100 focus:outline-none focus:border-[#4D7C5D] text-xs appearance-none font-sans cursor-pointer transition-colors"
  >
+ <option value="ALL_AREAS" className="font-bold text-emerald-600 dark:text-emerald-400">
+ ⚡ TODOS OS SETORES (DELEGAR GERAL PARA A EMPRESA)
+ </option>
+ <option disabled>──────────</option>
  {areas.map((a) => (
  <option key={a.id} value={a.id}>
  {a.name}
