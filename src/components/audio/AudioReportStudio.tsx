@@ -115,6 +115,23 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
  const fileInputRef = useRef<HTMLInputElement | null>(null);
  const speechAccumulatedRef = useRef<string>('');
 
+ // Detecção de Dispositivo (PC / Desktop vs Celular / PWA)
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkIsMobile = (): boolean => {
+      if (typeof window === 'undefined') return false;
+      const ua = navigator.userAgent || '';
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|IEMobile|BlackBerry/i.test(ua);
+      return isMobileUA || (isTouch && window.innerWidth <= 768);
+    };
+    setIsMobile(checkIsMobile());
+    const handleResize = () => setIsMobile(checkIsMobile());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
  // Cleanup
  useEffect(() => {
  return () => {
@@ -186,7 +203,7 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
         console.warn('AudioContext volume meter não suportado:', e);
       }
 
-      // 2. Web Speech Recognition para transcrição live simultânea (quando disponível)
+      // 2. Web Speech Recognition para transcrição live simultânea (Especialmente no PC Desktop)
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -221,7 +238,7 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
         }
       }
 
-      // 3. MediaRecorder para empacotar o áudio binário gravado no celular
+      // 3. MediaRecorder para empacotar o áudio binário
       audioChunksRef.current = [];
       const supportedMimeTypes = [
         'audio/webm;codecs=opus',
@@ -262,7 +279,29 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
         stream.getTracks().forEach((track) => track.stop());
 
         const finalSpoken = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
-        processRecordedAudioAndReport(audioBlobResult, finalMime, finalSpoken);
+
+        // ── FLUXO ESPECÍFICO PC vs CELULAR ──
+        if (!isMobile) {
+          // NO PC: se o SpeechRecognition já capturou o texto, abre a tela de revisão pré-IA
+          if (finalSpoken) {
+            setTranscriptionToConfirm(finalSpoken);
+            setIsConfirmingText(true);
+          } else if (audioBlobResult.size > 0) {
+            // Se o SpeechRecognition do PC não capturou texto (ex: microfone sem suporte WebSpeech), transcreve via Gemini
+            processRecordedAudioAndReport(audioBlobResult, finalMime, '');
+          } else {
+            setIsConfirmingText(true);
+          }
+        } else {
+          // NO CELULAR / PWA:
+          if (finalSpoken) {
+            setTranscriptionToConfirm(finalSpoken);
+            setIsConfirmingText(true);
+          } else {
+            // Em navegadores móveis onde o SpeechRecognition não emite eventos, transcreve direto pelo Gemini multimodal
+            processRecordedAudioAndReport(audioBlobResult, finalMime, '');
+          }
+        }
       };
 
       mediaRecorder.start(250);
@@ -292,6 +331,8 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     setIsRecording(false);
 
+    const capturedSpokenText = (speechAccumulatedRef.current + ' ' + liveTranscript).trim();
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -301,12 +342,22 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+
+    // No PC: se o SpeechRecognition já capturou o texto em tempo real, abre a tela de revisão pré-IA imediatamente
+    if (!isMobile && capturedSpokenText) {
+      setTranscriptionToConfirm(capturedSpokenText);
+      setIsConfirmingText(true);
+    }
   };
 
   // Processa o áudio capturado (speech-to-text multimodal + estruturação de relatório)
   const processRecordedAudioAndReport = async (blob: Blob, mime: string, liveText: string) => {
     setIsProcessing(true);
-    setProcessStatusText('Gemini transcrevendo o áudio do microfone e estruturando relatório...');
+    setProcessStatusText(
+      isMobile
+        ? 'Gemini transcrevendo áudio do celular e estruturando relatório...'
+        : 'Gemini transcrevendo gravação do microfone e estruturando relatório...'
+    );
     setKeyAlertMessage('');
 
     try {
@@ -387,7 +438,7 @@ export const AudioReportStudio: React.FC<AudioReportStudioProps> = ({
         const localReport: StructuredAudioReport = {
           transcription: fallbackText,
           summary: `Atividade operacional registrada: ${fallbackText.substring(0, 80)}...`,
-          whatWasDone: `• Execução e monitoramento de rotina do setor\n• Relato falado capturado pelo dispositivo móvel`,
+          whatWasDone: `• Execução e monitoramento de rotina do setor\n• Relato falado capturado pelo dispositivo`,
           durationTime: 'Turno padrão (8h)',
           resultImpact: 'Operação mantida em conformidade com parâmetros de qualidade',
           suggestedArea: currentUser.department || 'Operações',
@@ -645,7 +696,7 @@ Transcrição Original: "${report.transcription}"`;
  <h2 className="text-base sm:text-lg font-bold text-[#111D15] dark:text-slate-100 flex items-center space-x-2">
  <span>Processamento de Áudio → Relatório Estruturado</span>
  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold tracking-wider uppercase border border-emerald-500/20">
- IA EM TEMPO REAL
+ {isMobile ? 'PWA MOBILE · MULTIMODAL IA' : 'DESKTOP · VOZ EM TEMPO REAL'}
  </span>
  </h2>
  <p className="text-xs text-[#5E7567] dark:text-slate-400">
