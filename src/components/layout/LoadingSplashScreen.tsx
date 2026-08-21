@@ -23,7 +23,7 @@ export const LoadingSplashScreen: React.FC<LoadingSplashScreenProps> = ({ onFini
 
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const next = prev + Math.floor(Math.random() * 14) + 6;
+        const next = prev + Math.floor(Math.random() * 8) + 4;
         const currentStep = steps.find((s) => next >= s.at && prev < s.at);
         if (currentStep) {
           setStatusMessage(currentStep.msg);
@@ -35,21 +35,21 @@ export const LoadingSplashScreen: React.FC<LoadingSplashScreenProps> = ({ onFini
             setIsFadingOut(true);
             setTimeout(() => {
               onFinish?.();
-            }, 500);
-          }, 300);
+            }, 600);
+          }, 350);
           return 100;
         }
         return next;
       });
-    }, 70);
+    }, 45);
 
     return () => clearInterval(interval);
   }, [onFinish]);
 
   return (
     <div
-      className={`fixed inset-0 z-[100] bg-[#0E1712] text-white flex flex-col items-center justify-center p-6 select-none transition-opacity duration-500 font-sans ${
-        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      className={`fixed inset-0 z-[9999] bg-[#0B120E] text-white flex flex-col items-center justify-center p-6 select-none transition-all duration-600 ease-out font-sans ${
+        isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
       {/* Background Ambient Glows */}
