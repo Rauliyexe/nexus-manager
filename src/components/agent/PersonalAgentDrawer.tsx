@@ -25,6 +25,11 @@ import {
  Save,
  Check,
  Loader2,
+ Mic,
+ MicOff,
+ Ticket,
+ DollarSign,
+ Radio,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -56,12 +61,12 @@ interface AgentChatMessage {
 }
 
 const QUICK_SUGGESTIONS = [
- { label: 'O que preciso fazer hoje?', icon: Clock },
- { label: 'Como posso concluí-las?', icon: CheckCircle2 },
+ { label: 'Valkyra, abrir chamado urgente para TI sobre o servidor', icon: Ticket },
+ { label: 'Valkyra, delegar tarefa para Logística conferir frota', icon: Clock },
+ { label: 'Valkyra, registrar fechamento da Fundição como OK', icon: CheckCircle2 },
+ { label: 'Valkyra, qual o saldo de caixa e finanças hoje?', icon: DollarSign },
  { label: 'Quais tarefas estão atrasadas?', icon: AlertTriangle },
- { label: 'Resuma minhas atividades', icon: Layers },
- { label: 'Mostre meus projetos e status', icon: Building2 },
- { label: 'Existe algo urgente?', icon: ShieldCheck },
+ { label: 'Resuma minhas atividades e projetos', icon: Layers },
 ];
 
 export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
@@ -76,6 +81,8 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  conversations,
  messages,
  delegateTask,
+ createTicket,
+ submitDailyStatus,
  updateTaskStatus,
  playSound,
  } = useNexus();
@@ -85,6 +92,11 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  const [activeTool, setActiveTool] = useState<string | null>(null);
  const [expandedThoughts, setExpandedThoughts] = useState<Record<string, boolean>>({});
  const [showConfigModal, setShowConfigModal] = useState(false);
+
+ // Estados de Comando por Voz
+ const [isListeningVoice, setIsListeningVoice] = useState(false);
+ const [voiceTranscript, setVoiceTranscript] = useState('');
+ const recognitionRef = useRef<any>(null);
 
  // Estados de Chave e Modelo
  const [apiKeyInput, setApiKeyInput] = useState('');
@@ -193,96 +205,185 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  }
  };
 
+ // Iniciar e Parar Reconhecimento de Voz de Comandos Operacionais
+ const toggleVoiceRecording = () => {
+  if (isListeningVoice) {
+    stopVoiceRecording();
+  } else {
+    startVoiceRecording();
+  }
+ };
+
+ const startVoiceRecording = () => {
+  const SpeechRecognition =
+    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert('Seu navegador não possui suporte direto ao Web Speech API. Digite o comando de voz no campo de texto.');
+    return;
+  }
+
+  try {
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      setIsListeningVoice(true);
+      setVoiceTranscript('');
+      playSound('BUTTON_CLICK');
+    };
+
+    recognition.onresult = (event: any) => {
+      let full = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i] && event.results[i][0]) {
+          full += event.results[i][0].transcript + ' ';
+        }
+      }
+      const clean = full.trim();
+      setVoiceTranscript(clean);
+      setInputMessage(clean);
+    };
+
+    recognition.onerror = (e: any) => {
+      console.warn('Voice recognition error:', e);
+      setIsListeningVoice(false);
+    };
+
+    recognition.onend = () => {
+      setIsListeningVoice(false);
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+  } catch (e) {
+    console.warn('Erro ao iniciar reconhecimento de voz:', e);
+    setIsListeningVoice(false);
+  }
+ };
+
+ const stopVoiceRecording = () => {
+  if (recognitionRef.current) {
+    try {
+      recognitionRef.current.stop();
+    } catch (e) {}
+  }
+  setIsListeningVoice(false);
+  const spoken = (voiceTranscript || inputMessage).trim();
+  if (spoken) {
+    handleSendMessage(spoken);
+    setVoiceTranscript('');
+  }
+ };
+
  const handleSendMessage = async (customText?: string) => {
- const textToSend = customText || inputMessage;
- if (!textToSend.trim() || loading) return;
+  const textToSend = customText || inputMessage;
+  if (!textToSend.trim() || loading) return;
 
- const userTimestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
- const userMsg: AgentChatMessage = {
- id: `user-${Date.now()}`,
- sender: 'user',
- text: textToSend.trim(),
- timestamp: userTimestamp,
- };
+  if (isListeningVoice) {
+    stopVoiceRecording();
+  }
 
- setChatHistory((prev) => [...prev, userMsg]);
- if (!customText) setInputMessage('');
- setLoading(true);
- setActiveTool(' Gemini pensando e raciocinando sobre sua solicitação...');
+  const userTimestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const userMsg: AgentChatMessage = {
+    id: `user-${Date.now()}`,
+    sender: 'user',
+    text: textToSend.trim(),
+    timestamp: userTimestamp,
+  };
 
- try {
- const geminiKey = getStoredGeminiKey();
- const geminiModel = getStoredGeminiModel();
- const isThinking = getStoredGeminiThinkingEnabled();
+  setChatHistory((prev) => [...prev, userMsg]);
+  if (!customText) setInputMessage('');
+  setLoading(true);
+  setActiveTool('Valkyra raciocinando e executando comandos operacionais...');
 
- const response = await fetch('/api/ai/agent', {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
- ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
- 'x-gemini-thinking': String(isThinking),
- },
- body: JSON.stringify({
- message: textToSend.trim(),
- history: chatHistory,
- context: {
- currentUser,
- tasks,
- areas,
- notifications,
- conversations,
- messages,
- },
- }),
- });
+  try {
+    const geminiKey = getStoredGeminiKey();
+    const geminiModel = getStoredGeminiModel();
+    const isThinking = getStoredGeminiThinkingEnabled();
 
- if (!response.ok) {
- throw new Error('Falha ao processar solicitação com o agente');
- }
+    const response = await fetch('/api/ai/agent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+        ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
+        'x-gemini-thinking': String(isThinking),
+      },
+      body: JSON.stringify({
+        message: textToSend.trim(),
+        history: chatHistory,
+        context: {
+          currentUser,
+          tasks,
+          areas,
+          notifications,
+          conversations,
+          messages,
+        },
+      }),
+    });
 
- const data = await response.json();
+    if (!response.ok) {
+      throw new Error('Falha ao processar solicitação com o agente');
+    }
 
- // Se a IA disparou uma ação no backend, refletimos no store local do Nexus
- if (data.actionTaken) {
- if (data.actionTaken.type === 'TASK_CREATED') {
- delegateTask(data.actionTaken.data);
- } else if (data.actionTaken.type === 'TASK_UPDATED') {
- updateTaskStatus(data.actionTaken.data.taskId, data.actionTaken.data.status);
- }
- }
+    const data = await response.json();
 
- const agentMsgId = `agent-${Date.now()}`;
- const agentMsg: AgentChatMessage = {
- id: agentMsgId,
- sender: 'agent',
- text: data.text,
- thoughtProcess: data.thoughtProcess,
- toolsUsed: data.toolsUsed,
- actionTaken: data.actionTaken,
- engineType: data.engineType,
- timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
- };
+    // ── Execução das Ações Operacionais Reais no Command Center ──
+    if (data.actionTaken) {
+      if (data.actionTaken.type === 'TASK_CREATED') {
+        delegateTask(data.actionTaken.data);
+        playSound('TASK_CREATED');
+      } else if (data.actionTaken.type === 'TICKET_CREATED') {
+        createTicket(data.actionTaken.data);
+        playSound('TASK_CREATED');
+      } else if (data.actionTaken.type === 'STATUS_SUBMITTED') {
+        submitDailyStatus(
+          data.actionTaken.data.area_id,
+          data.actionTaken.data.status,
+          data.actionTaken.data.justification
+        );
+        playSound('TASK_COMPLETED');
+      } else if (data.actionTaken.type === 'TASK_UPDATED') {
+        updateTaskStatus(data.actionTaken.data.taskId, data.actionTaken.data.status);
+        playSound('TASK_COMPLETED');
+      }
+    }
 
- // Abre automaticamente o pensamento se for uma resposta rica
- if (data.thoughtProcess) {
- setExpandedThoughts((prev) => ({ ...prev, [agentMsgId]: true }));
- }
+    const agentMsgId = `agent-${Date.now()}`;
+    const agentMsg: AgentChatMessage = {
+      id: agentMsgId,
+      sender: 'agent',
+      text: data.text,
+      thoughtProcess: data.thoughtProcess,
+      toolsUsed: data.toolsUsed,
+      actionTaken: data.actionTaken,
+      engineType: data.engineType,
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
 
- setChatHistory((prev) => [...prev, agentMsg]);
- playSound('AI_READY');
- } catch (err) {
- const errorMsg: AgentChatMessage = {
- id: `err-${Date.now()}`,
- sender: 'agent',
- text: 'Não consegui processar essa requisição no momento. Por favor, tente novamente.',
- timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
- };
- setChatHistory((prev) => [...prev, errorMsg]);
- } finally {
- setLoading(false);
- setActiveTool(null);
- }
+    // Abre automaticamente o pensamento se for uma resposta rica
+    if (data.thoughtProcess) {
+      setExpandedThoughts((prev) => ({ ...prev, [agentMsgId]: true }));
+    }
+
+    setChatHistory((prev) => [...prev, agentMsg]);
+    playSound('AI_READY');
+  } catch (err) {
+    const errorMsg: AgentChatMessage = {
+      id: `err-${Date.now()}`,
+      sender: 'agent',
+      text: 'Não consegui processar essa requisição no momento. Por favor, tente novamente.',
+      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
+    setChatHistory((prev) => [...prev, errorMsg]);
+  } finally {
+    setLoading(false);
+    setActiveTool(null);
+  }
  };
 
  const handleClearHistory = () => {
@@ -312,7 +413,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  <div className="min-w-0">
  <div className="flex items-center space-x-2">
  <h3 className="text-sm font-bold text-[#111D15] dark:text-slate-100 truncate">
- Personal AI Copilot
+ Personal AI Copilot · Valkyra
  </h3>
  <button
  onClick={() => setShowConfigModal(!showConfigModal)}
@@ -481,7 +582,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  disabled={loading}
  className="px-3 py-1.5 rounded-xl bg-[#EEF2EE] dark:bg-[#1C2E24] hover:bg-[#D5E0D7] dark:hover:bg-[#2A4A3C] text-[#1B3026] dark:text-[#76B38B] font-bold text-xs flex items-center space-x-1.5 transition-all whitespace-nowrap cursor-pointer shrink-0 shadow-2xs"
  >
- <Icon className="w-3.5 h-3.5" />
+ <Icon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
  <span>{sug.label}</span>
  </button>
  );
@@ -562,20 +663,28 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  <MarkdownRenderer content={msg.text} isUser={isUser} />
  </div>
 
- {/* Executed Action Badge */}
+ {/* Executed Action Badge (Suporte a Tickets, Fechamentos e Tarefas) */}
  {msg.actionTaken && (
- <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-xl space-y-0.5 text-xs text-emerald-950 dark:text-emerald-200 card-shadow animate-in fade-in duration-150">
+ <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/80 rounded-2xl space-y-1 text-xs text-emerald-950 dark:text-emerald-200 card-shadow animate-in zoom-in-95 duration-150">
  <div className="flex items-center space-x-1.5 font-bold">
- <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+ <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
  <span className="font-mono text-[10px] uppercase tracking-wider">
  {msg.actionTaken.type === 'TASK_CREATED'
- ? 'AÇÃO EXECUTADA · Tarefa Criada'
- : 'AÇÃO EXECUTADA · Tarefa Atualizada'}
+ ? 'AÇÃO EXECUTADA · Tarefa Criada no Hub'
+ : msg.actionTaken.type === 'TICKET_CREATED'
+ ? 'AÇÃO EXECUTADA · Chamado Aberto na Central'
+ : msg.actionTaken.type === 'STATUS_SUBMITTED'
+ ? 'AÇÃO EXECUTADA · Fechamento Diário Registrado'
+ : 'AÇÃO EXECUTADA · Demanda Atualizada'}
  </span>
  </div>
  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 pl-5">
  {msg.actionTaken.type === 'TASK_CREATED'
- ? `Demanda "${msg.actionTaken.data?.title}" registrada no Command Center.`
+ ? `Demanda "${msg.actionTaken.data?.title}" registrada e delegada com sucesso.`
+ : msg.actionTaken.type === 'TICKET_CREATED'
+ ? `Chamado "${msg.actionTaken.data?.title}" aberto com prioridade ${msg.actionTaken.data?.priority}.`
+ : msg.actionTaken.type === 'STATUS_SUBMITTED'
+ ? `Status da área atualizado para ${msg.actionTaken.data?.status} no fechamento.`
  : `Status da tarefa atualizado para ${msg.actionTaken.data?.status}.`}
  </p>
  </div>
@@ -604,10 +713,10 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  <div className="p-3.5 bg-emerald-50/70 dark:bg-[#07130B] border border-emerald-300/60 dark:border-emerald-900/60 rounded-2xl rounded-tl-xs space-y-2 card-shadow max-w-[85%] animate-in fade-in duration-150">
  <div className="flex items-center space-x-2 text-emerald-900 dark:text-emerald-300 font-bold text-xs">
  <BrainCircuit className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" />
- <span>{activeTool || 'Gemini raciocinando...'}</span>
+ <span>{activeTool || 'Valkyra processando comando...'}</span>
  </div>
  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400 font-mono">
- Consultando base de tarefas, analisando contexto e formulando resposta...
+ Interpretando intenção, acionando ferramentas operacionais e executando no Command Center...
  </p>
  </div>
  </div>
@@ -616,28 +725,51 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  <div ref={messagesEndRef} />
  </div>
 
- {/* ── Input Bar ── */}
+ {/* ── Input Bar com Microfone de Comandos por Voz ── */}
  <div className="p-4 bg-[#EEF2EE]/40 dark:bg-[#0B120E] border-t border-[#D5E0D7] dark:border-[#1E3125]">
  <form
  onSubmit={(e) => {
  e.preventDefault();
  handleSendMessage();
  }}
- className="flex items-center space-x-2 bg-white dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-2xl p-2 card-shadow focus-within:border-[#1B3026] transition-all"
+ className={`flex items-center space-x-2 bg-white dark:bg-[#121D16] border rounded-2xl p-2 card-shadow transition-all ${
+ isListeningVoice
+ ? 'border-rose-500 dark:border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20'
+ : 'border-[#D5E0D7] dark:border-[#1E3125] focus-within:border-[#1B3026]'
+ }`}
  >
+ {/* Botão de Microfone / Comandos de Voz */}
+ <button
+ type="button"
+ onClick={toggleVoiceRecording}
+ disabled={loading}
+ className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+ isListeningVoice
+ ? 'bg-rose-600 text-white animate-pulse shadow-md shadow-rose-900/40'
+ : 'bg-[#EEF2EE] dark:bg-[#1C2E24] hover:bg-[#D5E0D7] dark:hover:bg-[#2A4738] text-[#1B3026] dark:text-[#76B38B]'
+ }`}
+ title={isListeningVoice ? 'Parar escuta e enviar comando' : 'Falar comando por voz para Valkyra'}
+ >
+ {isListeningVoice ? <Radio className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+ </button>
+
  <input
  type="text"
  value={inputMessage}
  onChange={(e) => setInputMessage(e.target.value)}
- placeholder="Peça algo ao seu agente... (ex: 'Como posso concluí-las?')"
+ placeholder={
+ isListeningVoice
+ ? 'Ouvindo comando por voz... (ex: "Abrir chamado urgente para TI")'
+ : 'Digite ou use o microfone (ex: "Valkyra, abrir chamado para TI")'
+ }
  disabled={loading}
- className="flex-1 bg-transparent px-3 py-1.5 text-xs text-[#111D15] dark:text-slate-100 placeholder-[#5E7567] focus:outline-none font-medium"
+ className="flex-1 bg-transparent px-2 py-1.5 text-xs text-[#111D15] dark:text-slate-100 placeholder-[#5E7567] focus:outline-none font-medium"
  />
 
  <button
  type="submit"
  disabled={!inputMessage.trim() || loading}
- className={`p-2.5 rounded-xl transition-all shadow-xs cursor-pointer ${
+ className={`p-2.5 rounded-xl transition-all shadow-xs cursor-pointer shrink-0 ${
  inputMessage.trim() && !loading
  ? 'bg-[#1B3026] hover:bg-[#2A4A3C] text-white'
  : 'bg-[#EEF2EE] dark:bg-[#1C2E24] text-[#5E7567] cursor-not-allowed'

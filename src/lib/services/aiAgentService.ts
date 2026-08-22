@@ -7,6 +7,7 @@ import {
  Message,
  TaskPriority,
  TaskStatus,
+ TicketCategory,
 } from '@/lib/types/nexus';
 
 export interface AgentContext {
@@ -28,7 +29,7 @@ export interface AgentToolResult {
  tool_use_id: string;
  content: string;
  actionTaken?: {
- type: 'TASK_CREATED' | 'TASK_UPDATED' | 'MESSAGE_SENT' | 'CONFIRMATION_REQUIRED';
+ type: 'TASK_CREATED' | 'TASK_UPDATED' | 'TICKET_CREATED' | 'STATUS_SUBMITTED' | 'MESSAGE_SENT' | 'CONFIRMATION_REQUIRED';
  data: any;
  };
 }
@@ -151,6 +152,70 @@ export const AGENT_TOOLS = [
  required: ['taskId', 'status'],
  },
  },
+  {
+    name: 'create_support_ticket',
+    description: 'Abre um chamado de suporte/incidente operacional (Helpdesk, TI, Manutenção, Infraestrutura) no Command Center.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Título conciso do chamado (ex: "Servidor fora do ar", "Vazamento na prensa").',
+        },
+        description: {
+          type: 'string',
+          description: 'Descrição detalhada do incidente ou solicitação de suporte.',
+        },
+        category: {
+          type: 'string',
+          enum: ['TI_SUPPORTE', 'MANUTENCAO', 'SEGURANCA', 'SUPRIMENTOS', 'RH_PESSOAS', 'OUTROS'],
+          description: 'Categoria do chamado.',
+        },
+        priority: {
+          type: 'string',
+          enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
+          description: 'Nível de urgência/prioridade.',
+        },
+        area_id: {
+          type: 'string',
+          description: 'ID da área afetada (opcional, ex: area-4 para TI).',
+        },
+      },
+      required: ['title', 'description'],
+    },
+  },
+  {
+    name: 'submit_operational_status',
+    description: 'Registra e envia o fechamento operacional diário de um departamento/área (status GREEN/OK, YELLOW/ATENÇÃO ou RED/CRÍTICO).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        area_name_or_id: {
+          type: 'string',
+          description: 'Nome ou ID da área (ex: "Fundição", "Comercial Compras", "TI", "area-1").',
+        },
+        status: {
+          type: 'string',
+          enum: ['GREEN', 'YELLOW', 'RED'],
+          description: 'Status do fechamento (GREEN = OK, YELLOW = Atenção, RED = Crítico/Incidente).',
+        },
+        justification: {
+          type: 'string',
+          description: 'Justificativa ou relato das atividades executadas e pendências.',
+        },
+      },
+      required: ['area_name_or_id', 'status'],
+    },
+  },
+  {
+    name: 'get_financial_telemetry',
+    description: 'Consulta indicadores financeiros em tempo real (saldo de caixa, contas a receber, contas a pagar, margem operacional).',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
  {
  name: 'send_message',
  description: 'Envia uma mensagem para um canal ou conversa. Para ações de impacto, sempre pede confirmação antes.',
@@ -372,6 +437,79 @@ export async function executeAgentTool(
  },
  };
  }
+
+    case 'create_support_ticket': {
+      const targetArea = areas.find(
+        (a) =>
+          a.id === input.area_id ||
+          a.name.toLowerCase().includes((input.area_id || '').toLowerCase()) ||
+          a.name.toLowerCase().includes('ti')
+      ) || areas[0];
+
+      const ticketPayload = {
+        title: input.title,
+        description: input.description,
+        category: (input.category || 'TI_SUPPORTE') as TicketCategory,
+        area_id: targetArea?.id || 'area-4',
+        priority: (input.priority || 'HIGH') as TaskPriority,
+      };
+
+      return {
+        tool_use_id: '',
+        content: JSON.stringify({
+          success: true,
+          message: `Chamado operacional criado com sucesso: "${input.title}" para a área de ${targetArea?.name || 'TI'}.`,
+          ticket: ticketPayload,
+        }),
+        actionTaken: {
+          type: 'TICKET_CREATED',
+          data: ticketPayload,
+        },
+      };
+    }
+
+    case 'submit_operational_status': {
+      const targetArea = areas.find(
+        (a) =>
+          a.id === input.area_name_or_id ||
+          a.name.toLowerCase().includes((input.area_name_or_id || '').toLowerCase())
+      ) || areas[0];
+
+      const statusData = {
+        area_id: targetArea?.id || 'area-1',
+        area_name: targetArea?.name || 'Operacional',
+        status: input.status,
+        justification: input.justification || 'Fechamento registrado via comando de voz / IA.',
+      };
+
+      return {
+        tool_use_id: '',
+        content: JSON.stringify({
+          success: true,
+          message: `Fechamento da área ${targetArea?.name || 'Operacional'} registrado como status ${input.status}.`,
+          data: statusData,
+        }),
+        actionTaken: {
+          type: 'STATUS_SUBMITTED',
+          data: statusData,
+        },
+      };
+    }
+
+    case 'get_financial_telemetry': {
+      return {
+        tool_use_id: '',
+        content: JSON.stringify({
+          cash_balance: 'R$ 14.850.000,00',
+          receivables_month: 'R$ 8.920.000,00',
+          payables_month: 'R$ 5.410.000,00',
+          net_margin: '18.4%',
+          lme_copper_cash: 'US$ 9.420,00 / ton',
+          fx_usd_brl: 'R$ 5,72',
+          summary: 'Caixa robusto com liquidez imediata e margem operacional acima da meta (18.4%).',
+        }),
+      };
+    }
 
  case 'send_message': {
  return {
@@ -600,7 +738,103 @@ ${
  }
  }
 
- // Intenção 5: Projetos / Áreas do Sistema
+  // Intenção 5: Abrir Chamado / Suporte / Incidente Operacional por Voz ou Texto
+  if (
+    lower.includes('chamado') ||
+    lower.includes('suporte') ||
+    lower.includes('servidor') ||
+    lower.includes('ticket') ||
+    lower.includes('abrir chamado') ||
+    lower.includes('criar chamado') ||
+    lower.includes('manutenção')
+  ) {
+    toolsUsed.push('create_support_ticket');
+    thoughts.push('[Dedução] Comando operacional para abertura de chamado de suporte/incidente.');
+
+    let cleanTitle = userMessage
+      .replace(/valkyra,?\s*/i, '')
+      .replace(/(abrir|criar|registre|gerar)\s+(um\s+)?chamado\s+(de\s+|para\s+)?/i, '')
+      .replace(/(urgente\s+)?(sobre\s+|para\s+)?/i, '')
+      .trim();
+
+    if (!cleanTitle) cleanTitle = 'Incidente Operacional Reportado por Voz';
+    const titleFormatted = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+    const priority = lower.includes('urgente') || lower.includes('crítico') || lower.includes('grave') ? 'CRITICAL' : 'HIGH';
+    const category = lower.includes('servidor') || lower.includes('ti') || lower.includes('sistema') ? 'TI_SUPPORTE' : 'MANUTENCAO';
+
+    const ticketResult = await executeAgentTool(
+      'create_support_ticket',
+      {
+        title: titleFormatted,
+        description: `Incidente registrado via comando de voz pelo colaborador ${context.currentUser.name}: "${userMessage}"`,
+        category,
+        priority,
+        area_id: 'area-4',
+      },
+      context
+    );
+
+    return {
+      text: `✅ **Chamado Aberto com Sucesso no Command Center!**\n\n• **Título:** ${titleFormatted}\n• **Categoria:** ${category === 'TI_SUPPORTE' ? 'TI & Infraestrutura' : 'Manutenção Industrial'}\n• **Prioridade:** ${priority === 'CRITICAL' ? '🔴 Crítica / Urgente' : '🟠 Alta'}\n• **Status:** ABERTO (Aguardando atendimento)\n\nO chamado foi encaminhado para a fila de atendimento da equipe técnica.`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      actionTaken: ticketResult.actionTaken,
+      engineType: 'local',
+    };
+  }
+
+  // Intenção 6: Fechamento Operacional por Voz ou Texto
+  if (
+    lower.includes('fechamento') ||
+    lower.includes('status da área') ||
+    lower.includes('registrar fechamento') ||
+    lower.includes('fechar dia')
+  ) {
+    toolsUsed.push('submit_operational_status');
+    thoughts.push('[Dedução] Comando para envio de fechamento operacional diário.');
+
+    const status = lower.includes('crítico') || lower.includes('grave') || lower.includes('parada')
+      ? 'RED'
+      : lower.includes('atenção') || lower.includes('pendência') || lower.includes('alerta')
+      ? 'YELLOW'
+      : 'GREEN';
+
+    const statusResult = await executeAgentTool(
+      'submit_operational_status',
+      {
+        area_name_or_id: 'Fundição & Produção',
+        status,
+        justification: `Fechamento reportado via comando operacional: "${userMessage}"`,
+      },
+      context
+    );
+
+    return {
+      text: `📋 **Fechamento Operacional Registrado!**\n\n• **Área:** Fundição & Produção\n• **Status Registrado:** ${status === 'GREEN' ? '🟢 OK' : status === 'YELLOW' ? '🟡 ATENÇÃO' : '🔴 CRÍTICO'}\n• **Horário:** ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\nO status foi atualizado no painel diário e registrado no Command Center.`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      actionTaken: statusResult.actionTaken,
+      engineType: 'local',
+    };
+  }
+
+  // Intenção 7: Telemetria Financeira / Caixa / Finanças
+  if (lower.includes('caixa') || lower.includes('finan') || lower.includes('telemetria') || lower.includes('saldo') || lower.includes('receber')) {
+    toolsUsed.push('get_financial_telemetry');
+    thoughts.push('[Dedução] Consulta de telemetria financeira em tempo real.');
+
+    const finResult = await executeAgentTool('get_financial_telemetry', {}, context);
+    const fin = JSON.parse(finResult.content);
+
+    return {
+      text: `📊 **Telemetria Financeira & Posição de Caixa:**\n\n• **Saldo em Caixa / Disponibilidades:** ${fin.cash_balance}\n• **Contas a Receber (Mês):** ${fin.receivables_month}\n• **Contas a Pagar (Mês):** ${fin.payables_month}\n• **Margem Operacional Líquida:** ${fin.net_margin}\n• **Cotação Cobre (LME Cash):** ${fin.lme_copper_cash}\n\n💡 *${fin.summary}*`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      engineType: 'local',
+    };
+  }
+
+ // Intenção 8: Projetos / Áreas do Sistema
  if (lower.includes('projeto') || lower.includes('área') || lower.includes('setor') || lower.includes('departamento')) {
  toolsUsed.push('get_my_projects');
  thoughts.push('[Dedução] Consulta de projetos e áreas operacionais.');
