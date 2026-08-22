@@ -1193,6 +1193,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  const [obligations, setObligations] = useState<Obligation[]>(SEED_OBLIGATIONS);
  const [dailyStatuses, setDailyStatuses] = useState<DailyStatus[]>(SEED_DAILY_STATUS);
  const [alerts, setAlerts] = useState<Alert[]>(SEED_ALERTS);
+ const [tasks, setTasks] = useState<HubTask[]>(SEED_DELEGATED_TASKS);
  const [tickets, setTickets] = useState<SupportTicket[]>(SEED_TICKETS);
  const [itRequests, setItRequests] = useState<ITApprovalRequest[]>(SEED_IT_REQUESTS);
  const [activeOwnerCriticalAlert, setActiveOwnerCriticalAlert] = useState<OwnerCriticalAlert | null>(null);
@@ -1205,6 +1206,18 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     try {
+      const storedTasks = localStorage.getItem('nexus_hub_tasks');
+      if (storedTasks) {
+        setTasks(JSON.parse(storedTasks));
+      }
+      const storedTickets = localStorage.getItem('nexus_support_tickets');
+      if (storedTickets) {
+        setTickets(JSON.parse(storedTickets));
+      }
+      const storedDailyStatuses = localStorage.getItem('nexus_daily_statuses');
+      if (storedDailyStatuses) {
+        setDailyStatuses(JSON.parse(storedDailyStatuses));
+      }
       const storedReports = localStorage.getItem('nexus_saved_audio_reports');
       if (storedReports) {
         setSavedReports(JSON.parse(storedReports));
@@ -1236,6 +1249,33 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsAuthChecking(false);
     }
   }, []);
+
+  // Persistência automática de Tarefas
+  useEffect(() => {
+    try {
+      if (tasks && tasks.length > 0) {
+        localStorage.setItem('nexus_hub_tasks', JSON.stringify(tasks));
+      }
+    } catch (e) {}
+  }, [tasks]);
+
+  // Persistência automática de Chamados
+  useEffect(() => {
+    try {
+      if (tickets && tickets.length > 0) {
+        localStorage.setItem('nexus_support_tickets', JSON.stringify(tickets));
+      }
+    } catch (e) {}
+  }, [tickets]);
+
+  // Persistência automática de Fechamentos Diários
+  useEffect(() => {
+    try {
+      if (dailyStatuses && dailyStatuses.length > 0) {
+        localStorage.setItem('nexus_daily_statuses', JSON.stringify(dailyStatuses));
+      }
+    } catch (e) {}
+  }, [dailyStatuses]);
 
  const toggleRolePermission = (role: UserRole, feature: FeatureKey) => {
  setRolePermissions((prev) => {
@@ -1888,7 +1928,6 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  };
  });
 
- const [tasks, setTasks] = useState<HubTask[]>(SEED_DELEGATED_TASKS);
  const [integrations, setIntegrations] = useState<HubIntegration[]>(SEED_INTEGRATIONS);
  const [activePopUpTask, setActivePopUpTask] = useState<HubTask | null>(null);
  const [incomingTaskNotification, setIncomingTaskNotification] = useState<{ task: HubTask; time: string } | null>(null);

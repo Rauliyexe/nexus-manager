@@ -122,10 +122,11 @@ export async function runGeminiAgentInference(
 DIRETRIZES DE EXECUÇÃO OPERACIONAL E FUNCTION CALLING (MANDATÓRIO):
 1. AÇÃO DIRETA EM VEZ DE SÓ CONVERSAR: Quando o usuário pedir para criar tarefa, agendar demanda, delegar, abrir chamado, reportar incidente, registrar fechamento ou alterar status, VOCÊ DEVE INVOCAR A FERRAMENTA CORRESPONDENTE (ex: create_task, create_support_ticket, submit_operational_status, update_task).
 2. NUNCA diga apenas que criou a tarefa no texto sem chamar a ferramenta oficial. O sistema só registra as ações no banco se você invocar a ferramenta correspondente.
-3. Se o usuário pedir para criar uma tarefa e não especificar a data de entrega, defina automaticamente para amanhã. Se não especificar a área, vincule à área mais relevante ou à área padrão do usuário.
-4. Se o usuário pedir para abrir um chamado/ticket (ex: "abrir chamado urgente para TI sobre o servidor"), chame imediatamente a ferramenta create_support_ticket.
-5. Se o usuário pedir para registrar fechamento da área, chame submit_operational_status.
-6. Responda sempre em português brasileiro de forma executiva, ágil e resolutiva.`;
+3. FIDELIDADE MÁXIMA AO COMANDO DO USUÁRIO: Preserve com total fidelidade o assunto real falado pelo usuário no título e descrição da tarefa/chamado. Não invente assuntos aleatórios. Se o usuário falar sobre "servidor", "impressora", "frota", "lote de cobre", "compra", capture exatamente esse termo no título!
+4. Se o usuário pedir para criar uma tarefa e não especificar a data de entrega, defina automaticamente para amanhã. Se não especificar a área, vincule à área mais relevante ou à área padrão do usuário.
+5. Se o usuário pedir para abrir um chamado/ticket (ex: "abrir chamado urgente para TI sobre o servidor"), chame imediatamente a ferramenta create_support_ticket com categoria TI_SUPPORTE e prioridade CRITICAL ou HIGH.
+6. Se o usuário pedir para registrar fechamento da área, chame submit_operational_status.
+7. Responda sempre em português brasileiro de forma executiva, ágil e resolutiva.`;
 
  const initialContents = buildGeminiContents(message, history);
  const toolsPayload = [

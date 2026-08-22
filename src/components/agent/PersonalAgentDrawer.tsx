@@ -450,16 +450,19 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
     }
   };
 
- const handleClearHistory = () => {
- setChatHistory([
- {
- id: 'welcome-msg',
- sender: 'agent',
- text: `Histórico reiniciado. Como posso te ajudar, **${currentUser.name}**?`,
- timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
- },
- ]);
- };
+  const handleClearHistory = () => {
+    try {
+      localStorage.removeItem('nexus_valkyra_chat_history');
+    } catch (e) {}
+    setChatHistory([
+      {
+        id: 'welcome-msg',
+        sender: 'agent',
+        text: `Histórico reiniciado. Como posso te ajudar, **${currentUser.name}**?`,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
 
  const hasApiKey = Boolean(apiKeyInput || getStoredGeminiKey());
 
