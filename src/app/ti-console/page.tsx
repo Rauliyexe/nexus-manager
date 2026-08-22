@@ -21,10 +21,13 @@ import {
  Building2,
  RefreshCw,
  AlertTriangle,
+ UserPlus,
+ Trash2,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { USER_ROLE_LABELS, UserRole, ApprovalStatus, SYSTEM_FEATURES, FeatureKey } from '@/lib/types/nexus';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { RegisterEmployeeModal } from '@/components/modals/RegisterEmployeeModal';
 
 export default function TIConsolePage() {
  const {
@@ -32,6 +35,7 @@ export default function TIConsolePage() {
  profiles,
  itRequests,
  updateUserProfileRole,
+ deleteEmployeeProfile,
  approveITRequest,
  rejectITRequest,
  integrations,
@@ -45,6 +49,7 @@ export default function TIConsolePage() {
  const [searchQuery, setSearchQuery] = useState('');
  const [selectedTargetRole, setSelectedTargetRole] = useState<Record<string, UserRole>>({});
  const [approvalFilter, setApprovalFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+ const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
  const availableRoles: UserRole[] = [
  'DONO',
@@ -106,17 +111,27 @@ export default function TIConsolePage() {
  </div>
  </div>
 
- {/* User Context & Info */}
- <div className="flex items-center space-x-3 bg-white dark:bg-[#0B120E] px-3 py-2 rounded-xl border border-slate-200 dark:border-[#1E3125] self-start md:self-auto shadow-xs">
- <UserAvatar name={currentUser.name} size="sm" />
- <div>
- <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentUser.name}</p>
- <p className="text-[10px] font-mono text-[#4D7C5D] dark:text-[#76B38B] font-bold">
- {USER_ROLE_LABELS[currentUser.role] || currentUser.role}
- </p>
- </div>
- </div>
- </div>
+        {/* User Context & New Employee Button */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setIsRegisterModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-[#1B3026] text-white hover:bg-[#284739] dark:bg-[#76B38B] dark:text-[#111D15] dark:hover:bg-[#8fd1a5] font-bold text-xs flex items-center space-x-2 transition-all shadow-xs cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4 text-emerald-400 dark:text-[#111D15]" />
+            <span>+ Cadastrar Funcionário</span>
+          </button>
+
+          <div className="flex items-center space-x-3 bg-white dark:bg-[#0B120E] px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#1E3125] shadow-xs">
+            <UserAvatar name={currentUser.name} size="sm" />
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{currentUser.name}</p>
+              <p className="text-[10px] font-mono text-[#4D7C5D] dark:text-[#76B38B] font-bold">
+                {USER_ROLE_LABELS[currentUser.role] || currentUser.role}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
  {/* Navigation Tabs */}
  <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-[#1E3125] pb-2">
@@ -289,108 +304,148 @@ export default function TIConsolePage() {
  </div>
  </div>
 
- {/* Filter & Search Bar */}
- <div className="flex items-center justify-between gap-3 bg-white dark:bg-[#121D16] p-3 rounded-xl border border-slate-200 dark:border-[#1E3125]">
- <div className="relative flex-1">
- <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
- <input
- type="text"
- placeholder="Buscar colaborador por nome, e-mail ou cargo..."
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full bg-slate-50 dark:bg-[#0B120E] border border-slate-200 dark:border-[#1E3125] rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#4D7C5D]"
- />
- </div>
- <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
- Total: <strong>{filteredProfiles.length}</strong> colaboradores
- </span>
- </div>
+        {/* Filter & Search Bar + Quick Add Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#121D16] p-3 rounded-xl border border-slate-200 dark:border-[#1E3125]">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar colaborador por nome, e-mail ou cargo..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-[#0B120E] border border-slate-200 dark:border-[#1E3125] rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#4D7C5D]"
+            />
+          </div>
 
- {/* Employees Role Matrix Table */}
- <div className="bg-white dark:bg-[#121D16] rounded-xl border border-slate-200 dark:border-[#1E3125] overflow-hidden shadow-xs">
- <div className="overflow-x-auto">
- <table className="w-full text-left text-xs font-sans">
- <thead className="bg-slate-50 dark:bg-[#0B120E] text-slate-500 dark:text-slate-400 font-mono text-[10px] uppercase border-b border-slate-200 dark:border-[#1E3125]">
- <tr>
- <th className="p-3">Colaborador</th>
- <th className="p-3">Cargo Atual</th>
- <th className="p-3">Novo Cargo Proposto</th>
- <th className="p-3 text-right">Ação de IAM</th>
- </tr>
- </thead>
- <tbody className="divide-y divide-slate-200 dark:divide-[#1E3125]">
- {filteredProfiles.map((profile) => {
- const selectedRole = selectedTargetRole[profile.id] || profile.role;
- const isRoleChanged = selectedRole !== profile.role;
+          <div className="flex items-center space-x-3 shrink-0">
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+              Total: <strong>{filteredProfiles.length}</strong> colaboradores
+            </span>
+            <button
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-[#1B3026] text-white hover:bg-[#254235] dark:bg-[#76B38B] dark:text-[#111D15] font-bold text-xs flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-emerald-400 dark:text-[#111D15]" />
+              <span>Novo Cadastro</span>
+            </button>
+          </div>
+        </div>
 
- return (
- <tr key={profile.id} className="hover:bg-slate-50 dark:hover:bg-[#17261D] transition-colors">
- {/* Profile Info */}
- <td className="p-3">
- <div className="flex items-center space-x-3">
- <UserAvatar name={profile.name} size="sm" />
- <div>
- <p className="font-semibold text-slate-800 dark:text-slate-100">{profile.name}</p>
- <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{profile.email}</p>
- </div>
- </div>
- </td>
+        {/* Employees Role Matrix Table */}
+        <div className="bg-white dark:bg-[#121D16] rounded-xl border border-slate-200 dark:border-[#1E3125] overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-sans">
+              <thead className="bg-slate-50 dark:bg-[#0B120E] text-slate-500 dark:text-slate-400 font-mono text-[10px] uppercase border-b border-slate-200 dark:border-[#1E3125]">
+                <tr>
+                  <th className="p-3">Colaborador</th>
+                  <th className="p-3">Departamento</th>
+                  <th className="p-3">Cargo Atual</th>
+                  <th className="p-3">Novo Cargo Proposto</th>
+                  <th className="p-3 text-right">Ações de IAM</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-[#1E3125]">
+                {filteredProfiles.map((profile) => {
+                  const selectedRole = selectedTargetRole[profile.id] || profile.role;
+                  const isRoleChanged = selectedRole !== profile.role;
+                  const isCustom = profile.id.startsWith('usr-emp-');
 
- {/* Current Role */}
- <td className="p-3">
- <span
- className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border ${
- profile.role === 'DONO'
- ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/30'
- : profile.role === 'DIRETOR' || profile.role === 'DIRETOR_TI'
- ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30'
- : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
- }`}
- >
- {USER_ROLE_LABELS[profile.role] || profile.role}
- </span>
- </td>
+                  return (
+                    <tr key={profile.id} className="hover:bg-slate-50 dark:hover:bg-[#17261D] transition-colors">
+                      {/* Profile Info */}
+                      <td className="p-3">
+                        <div className="flex items-center space-x-3">
+                          <UserAvatar name={profile.name} size="sm" />
+                          <div>
+                            <p className="font-semibold text-slate-800 dark:text-slate-100 flex items-center space-x-1.5">
+                              <span>{profile.name}</span>
+                              {isCustom && (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[9px] font-mono font-bold">
+                                  NOVO
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{profile.email}</p>
+                          </div>
+                        </div>
+                      </td>
 
- {/* Proposed Role Selector */}
- <td className="p-3">
- <select
- value={selectedRole}
- onChange={(e) =>
- handleRoleSelectionChange(profile.id, e.target.value as UserRole)
- }
- className="bg-slate-50 dark:bg-[#0B120E] border border-slate-200 dark:border-[#1E3125] rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:border-[#4D7C5D]"
- >
- {availableRoles.map((role) => (
- <option key={role} value={role}>
- {USER_ROLE_LABELS[role]}
- </option>
- ))}
- </select>
- </td>
+                      {/* Department */}
+                      <td className="p-3 text-slate-600 dark:text-slate-400 text-xs font-medium">
+                        {profile.department || 'Geral'}
+                      </td>
 
- {/* Apply Button */}
- <td className="p-3 text-right">
- <button
- disabled={!isRoleChanged}
- onClick={() => handleApplyRoleChange(profile.id)}
- className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center space-x-1.5 ml-auto transition-all cursor-pointer ${
- isRoleChanged
- ? 'bg-[#4D7C5D] hover:bg-[#3d634a] text-white shadow-xs'
- : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50'
- }`}
- >
- <UserCheck className="w-3.5 h-3.5" />
- <span>Solicitar / Alterar Cargo</span>
- </button>
- </td>
- </tr>
- );
- })}
- </tbody>
- </table>
- </div>
- </div>
- </div>
+                      {/* Current Role */}
+                      <td className="p-3">
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border ${
+                            profile.role === 'DONO'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/30'
+                              : profile.role === 'DIRETOR' || profile.role === 'DIRETOR_TI'
+                              ? 'bg-purple-500/10 text-purple-600 dark:text-purple-300 border-purple-500/30'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          {USER_ROLE_LABELS[profile.role] || profile.role}
+                        </span>
+                      </td>
+
+                      {/* Proposed Role Selector */}
+                      <td className="p-3">
+                        <select
+                          value={selectedRole}
+                          onChange={(e) =>
+                            handleRoleSelectionChange(profile.id, e.target.value as UserRole)
+                          }
+                          className="bg-slate-50 dark:bg-[#0B120E] border border-slate-200 dark:border-[#1E3125] rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 font-mono focus:outline-none focus:border-[#4D7C5D]"
+                        >
+                          {availableRoles.map((role) => (
+                            <option key={role} value={role}>
+                              {USER_ROLE_LABELS[role]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            disabled={!isRoleChanged}
+                            onClick={() => handleApplyRoleChange(profile.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                              isRoleChanged
+                                ? 'bg-[#4D7C5D] hover:bg-[#3d634a] text-white shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-50'
+                            }`}
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Alterar Cargo</span>
+                          </button>
+
+                          {isCustom && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Deseja realmente remover o colaborador ${profile.name}?`)) {
+                                  deleteEmployeeProfile(profile.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                              title="Excluir Colaborador"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
  )}
 
  {/* TAB 2: FILA DE APROVAÇÕES DA DIRETORIA DE TI */}
@@ -600,6 +655,12 @@ export default function TIConsolePage() {
  <span>Ambiente de Demonstração • Painel de governança IAM e elevação de privilégios para apresentação à diretoria</span>
  <span className="font-mono text-[10px] text-[#3B4F43] dark:text-[#76B38B] font-bold">COPPER GROUP IAM CONTROL</span>
  </div>
+
+ {/* Register Employee Modal */}
+ <RegisterEmployeeModal
+ isOpen={isRegisterModalOpen}
+ onClose={() => setIsRegisterModalOpen(false)}
+ />
  </div>
  );
 }

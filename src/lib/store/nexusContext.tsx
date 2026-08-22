@@ -1091,6 +1091,14 @@ interface NexusContextType {
  updateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
  updateTaskStatus: (taskId: string, status: TaskStatus) => void;
  updateUserProfileRole: (targetUserId: string, proposedRole: UserRole) => void;
+ createEmployeeProfile: (data: {
+   name: string;
+   email: string;
+   role: UserRole;
+   department?: string;
+   initialPassword?: string;
+ }) => Profile;
+ deleteEmployeeProfile: (userId: string) => void;
  approveITRequest: (requestId: string) => void;
  rejectITRequest: (requestId: string, reason?: string) => void;
  dismissOwnerCriticalAlert: () => void;
@@ -1206,6 +1214,10 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     try {
+      const storedCustomProfiles = localStorage.getItem('nexus_custom_profiles');
+      if (storedCustomProfiles) {
+        setProfiles(JSON.parse(storedCustomProfiles));
+      }
       const storedTasks = localStorage.getItem('nexus_hub_tasks');
       if (storedTasks) {
         setTasks(JSON.parse(storedTasks));
@@ -2190,9 +2202,64 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  );
  };
 
- const dismissOwnerCriticalAlert = () => {
- setActiveOwnerCriticalAlert(null);
- };
+  const createEmployeeProfile = (data: {
+    name: string;
+    email: string;
+    role: UserRole;
+    department?: string;
+    initialPassword?: string;
+  }): Profile => {
+    const newId = `usr-emp-${Date.now()}`;
+    const newProfile: Profile = {
+      id: newId,
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      role: data.role,
+      department: data.department || 'Operacional',
+    };
+
+    const updatedProfiles = [...profiles, newProfile];
+    setProfiles(updatedProfiles);
+
+    try {
+      localStorage.setItem('nexus_custom_profiles', JSON.stringify(updatedProfiles));
+      if (data.initialPassword) {
+        const storedPass = localStorage.getItem('nexus_user_passwords');
+        const passObj = storedPass ? JSON.parse(storedPass) : {};
+        passObj[newId] = data.initialPassword;
+        passObj[newProfile.email] = data.initialPassword;
+        localStorage.setItem('nexus_user_passwords', JSON.stringify(passObj));
+      }
+    } catch (e) {}
+
+    // Push global notification
+    const notifItem: NotificationItem = {
+      id: `ntf-usr-${Date.now()}`,
+      user_id: currentUser.id,
+      title: `[NOVO COLABORADOR] ${newProfile.name}`,
+      message: `${currentUser.name} cadastrou um novo colaborador com cargo ${USER_ROLE_LABELS[newProfile.role] || newProfile.role} no departamento de ${newProfile.department}.`,
+      type: 'INFO',
+      read: false,
+      created_at: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notifItem, ...prev]);
+    soundService.play('TASK_CREATED');
+
+    return newProfile;
+  };
+
+  const deleteEmployeeProfile = (userId: string) => {
+    if (userId === currentUser.id) return;
+    const updatedProfiles = profiles.filter((p) => p.id !== userId);
+    setProfiles(updatedProfiles);
+    try {
+      localStorage.setItem('nexus_custom_profiles', JSON.stringify(updatedProfiles));
+    } catch (e) {}
+  };
+
+  const dismissOwnerCriticalAlert = () => {
+    setActiveOwnerCriticalAlert(null);
+  };
 
  const updateTaskStatus = (taskId: string, status: TaskStatus) => {
  const nowISO = new Date().toISOString();
@@ -2319,6 +2386,8 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  updateTicketStatus,
  updateTaskStatus,
  updateUserProfileRole,
+ createEmployeeProfile,
+ deleteEmployeeProfile,
  approveITRequest,
  rejectITRequest,
  dismissOwnerCriticalAlert,
