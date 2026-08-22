@@ -11,6 +11,7 @@ interface TopbarProps {
   onOpenClosingModal: () => void;
   onToggleNotificationDrawer: () => void;
   onToggleAgentDrawer?: () => void;
+  onOpenSpotlight?: () => void;
 }
 
 const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
@@ -31,6 +32,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onOpenClosingModal,
   onToggleNotificationDrawer,
   onToggleAgentDrawer,
+  onOpenSpotlight,
 }) => {
   const pathname = usePathname();
   const { currentUser, profiles, switchUser, logout, notifications, theme, toggleTheme, soundEnabled, toggleSound } = useNexus();
@@ -74,6 +76,19 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Right: Search + Theme + Notifications + User */}
       <div className="flex items-center space-x-2 shrink-0">
+        {/* Quick Spotlight Search Trigger (Ctrl + K) */}
+        <button
+          onClick={onOpenSpotlight}
+          className="flex items-center space-x-2 px-2.5 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] hover:border-[#1B3026] dark:hover:border-[#4D7C5D] rounded-xl text-xs text-[#5E7567] dark:text-slate-300 transition-all cursor-pointer group shadow-2xs"
+          title="Busca Rápida e Ações Rápidas (Ctrl + K)"
+        >
+          <Search className="w-3.5 h-3.5 text-[#5E7567] group-hover:text-[#1B3026] dark:group-hover:text-emerald-400 transition-colors" />
+          <span className="hidden sm:inline text-xs font-medium">Buscar...</span>
+          <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.2 text-[10px] font-mono font-bold bg-white dark:bg-[#1C2E24] border border-[#D5E0D7] dark:border-[#1E3125] rounded-md text-[#5E7567] dark:text-slate-400">
+            Ctrl K
+          </kbd>
+        </button>
+
         {/* Personal AI Copilot Button */}
         {onToggleAgentDrawer && (
           <button
@@ -86,16 +101,6 @@ export const Topbar: React.FC<TopbarProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-[#2C6E49] dark:bg-[#76B38B] animate-pulse" />
           </button>
         )}
-
-        {/* Search */}
-        <div className="relative hidden sm:block">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-36 lg:w-48 pl-8 pr-3 py-1.5 bg-[#EEF2EE] dark:bg-[#121D16] border border-[#D5E0D7] dark:border-[#1E3125] rounded-xl text-xs text-[#111D15] dark:text-slate-200 placeholder-[#5E7567] focus:outline-none focus:border-[#1B3026] transition-colors"
-          />
-          <Search className="w-3.5 h-3.5 text-[#5E7567] absolute left-2.5 top-2.5 pointer-events-none" />
-        </div>
 
         {/* Sound Toggle (Mute/Unmute) */}
         <button

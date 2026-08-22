@@ -17,14 +17,17 @@ import {
   Settings,
   ShieldCheck,
   Ticket,
+  Search,
+  Sparkles,
 } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 
 interface MobileBottomNavProps {
   onOpenClosingModal: () => void;
+  onOpenSpotlight?: () => void;
 }
 
-export function MobileBottomNav({ onOpenClosingModal }: MobileBottomNavProps) {
+export function MobileBottomNav({ onOpenClosingModal, onOpenSpotlight }: MobileBottomNavProps) {
   const pathname = usePathname();
   const { alerts, conversations, currentUser, hasFinancialAccess } = useNexus();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -89,6 +92,24 @@ export function MobileBottomNav({ onOpenClosingModal }: MobileBottomNavProps) {
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {onOpenSpotlight && (
+              <button
+                onClick={() => {
+                  setShowMoreMenu(false);
+                  onOpenSpotlight();
+                }}
+                className="w-full py-2.5 px-3.5 rounded-xl bg-[#1B3026] text-white flex items-center justify-between font-bold text-xs shadow-xs hover:bg-[#254235] transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-2">
+                  <Search className="w-4 h-4 text-emerald-400" />
+                  <span>Busca Rápida & Comandos</span>
+                </div>
+                <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded text-emerald-200">
+                  Ctrl + K
+                </span>
+              </button>
+            )}
 
             <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
               {moreMenuItems.map((item) => {

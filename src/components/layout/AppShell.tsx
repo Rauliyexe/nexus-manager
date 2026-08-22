@@ -15,6 +15,7 @@ import { TaskDetailsPopUpModal } from '../modals/TaskDetailsPopUpModal';
 import { OwnerCriticalAlertModal } from '../modals/OwnerCriticalAlertModal';
 import { LoadingSplashScreen } from './LoadingSplashScreen';
 import { LoginScreen } from '../auth/LoginScreen';
+import { SpotlightModal } from '../modals/SpotlightModal';
 import { useNexus } from '@/lib/store/nexusContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
+  const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
   
+  // Controle de atalho global Ctrl + K / Cmd + K para Spotlight
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSpotlightOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Controle rigoroso de splash screen para NUNCA reaparecer durante a navegação entre abas
   const [showSplash, setShowSplash] = useState<boolean>(false);
 
@@ -116,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 setIsNotificationDrawerOpen(!isNotificationDrawerOpen)
               }
               onToggleAgentDrawer={() => setIsAgentDrawerOpen(!isAgentDrawerOpen)}
+              onOpenSpotlight={() => setIsSpotlightOpen(true)}
             />
 
             {/* ONLY this main area scrolls! */}
@@ -127,7 +142,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Mobile Bottom Navigation Bar (Visible only on mobile devices) */}
-      <MobileBottomNav onOpenClosingModal={() => setIsClosingModalOpen(true)} />
+      <MobileBottomNav
+        onOpenClosingModal={() => setIsClosingModalOpen(true)}
+        onOpenSpotlight={() => setIsSpotlightOpen(true)}
+      />
 
       {/* PWA Floating Install Prompt for Android, iOS & Desktop */}
       <PWAInstallPrompt />
@@ -155,6 +173,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <PersonalAgentDrawer
         isOpen={isAgentDrawerOpen}
         onClose={() => setIsAgentDrawerOpen(false)}
+      />
+
+      <SpotlightModal
+        isOpen={isSpotlightOpen}
+        onClose={() => setIsSpotlightOpen(false)}
+        onOpenAgentDrawer={() => setIsAgentDrawerOpen(true)}
+        onOpenClosingModal={() => setIsClosingModalOpen(true)}
       />
     </div>
   );
