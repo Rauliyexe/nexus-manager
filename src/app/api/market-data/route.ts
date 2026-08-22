@@ -4,6 +4,9 @@ import {
   calculateMarketStatus,
 } from '@/lib/services/marketDataService';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Server-side in-memory cache with 5s TTL
 interface CacheContainer {
   data: RealMarketDataResponse;
@@ -19,10 +22,17 @@ export async function GET() {
 
   // Return cached payload if valid
   if (cachedMarketData && nowMs - cachedMarketData.timestamp < CACHE_TTL_MS) {
-    return NextResponse.json({
-      ...cachedMarketData.data,
-      connectionState: 'CACHE',
-    });
+    return NextResponse.json(
+      {
+        ...cachedMarketData.data,
+        connectionState: 'CACHE',
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }
+    );
   }
 
   const { status: marketStatus, reason: marketStatusReason } = calculateMarketStatus(now);
@@ -31,7 +41,7 @@ export async function GET() {
   let eurBrlRate = 5.91;
   let btcUsdRate = 64200;
   let copperSpotUSD = 9840;
-  let providerSource = 'AwesomeAPI + Banco Central + Yahoo Finance';
+  let providerSource = 'AwesomeAPI + Banco Central';
   let apiTimestamp = now.toISOString();
 
   let isAwesomeApiSuccess = false;
@@ -39,13 +49,16 @@ export async function GET() {
   // 1. Fetch real-time FX & Crypto from AwesomeAPI
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
     const res = await fetch(
       'https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,BTC-USD',
       {
         signal: controller.signal,
-        next: { revalidate: 5 },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NexusManager/1.0',
+        },
+        cache: 'no-store',
       }
     );
 
@@ -73,13 +86,13 @@ export async function GET() {
   if (!isAwesomeApiSuccess) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const bcbRes = await fetch(
         'https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados/ultimos/1?formato=json',
         {
           signal: controller.signal,
-          next: { revalidate: 10 },
+          cache: 'no-store',
         }
       );
 
@@ -97,39 +110,83 @@ export async function GET() {
     }
   }
 
-  // 3. Fetch LME Copper Futures (HG=F) from Yahoo Finance Proxy
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+  // 3. Check optional institutional provider keys from process.env (Finnhub / AlphaVantage)
+  const finnhubKey = process.env.FINNHUB_API_KEY;
+  const alphavantageKey = process.env.ALPHAVANTAGE_API_KEY;
 
-    const yahooRes = await fetch(
-      'https://query1.finance.yahoo.com/v8/finance/chart/HG=F?interval=1m&range=1d',
-      {
+  if (finnhubKey) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const finnRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=HG=F&token=${finnhubKey}`, {
         signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        },
-        next: { revalidate: 10 },
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (yahooRes.ok) {
-      const yahooData = await yahooRes.json();
-      const result = yahooData?.chart?.result?.[0];
-      const regularMarketPrice = result?.meta?.regularMarketPrice;
-
-      if (regularMarketPrice && typeof regularMarketPrice === 'number') {
-        // HG=F is quoted in USD/lb. Convert to USD/ton (1 metric ton ≈ 2204.62 lbs)
-        const convertedTonUSD = Math.round(regularMarketPrice * 2204.62);
-        if (convertedTonUSD > 5000 && convertedTonUSD < 20000) {
-          copperSpotUSD = convertedTonUSD;
+      });
+      clearTimeout(timeoutId);
+      if (finnRes.ok) {
+        const finnData = await finnRes.json();
+        if (finnData.c && typeof finnData.c === 'number') {
+          copperSpotUSD = Math.round(finnData.c * 2204.62);
+          providerSource = 'Finnhub Institutional Feed';
         }
       }
+    } catch (e) {}
+  } else if (alphavantageKey) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const alphaRes = await fetch(
+        `https://www.alphavantage.co/query?function=COPPER&interval=monthly&apikey=${alphavantageKey}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      if (alphaRes.ok) {
+        const alphaData = await alphaRes.json();
+        if (alphaData.data && alphaData.data[0]?.value) {
+          const val = parseFloat(alphaData.data[0].value);
+          if (val > 0) {
+            copperSpotUSD = Math.round(val);
+            providerSource = 'AlphaVantage Financial API';
+          }
+        }
+      }
+    } catch (e) {}
+  } else {
+    // 4. Fetch LME Copper Futures (HG=F) from Yahoo Finance Proxy
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const yahooRes = await fetch(
+        'https://query1.finance.yahoo.com/v8/finance/chart/HG=F?interval=1m&range=1d',
+        {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (yahooRes.ok) {
+        const yahooData = await yahooRes.json();
+        const result = yahooData?.chart?.result?.[0];
+        const regularMarketPrice = result?.meta?.regularMarketPrice;
+
+        if (regularMarketPrice && typeof regularMarketPrice === 'number') {
+          // HG=F is quoted in USD/lb. Convert to USD/ton (1 metric ton ≈ 2204.62 lbs)
+          const convertedTonUSD = Math.round(regularMarketPrice * 2204.62);
+          if (convertedTonUSD > 5000 && convertedTonUSD < 20000) {
+            copperSpotUSD = convertedTonUSD;
+            providerSource = 'AwesomeAPI + Yahoo Finance (LME HG=F)';
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[MarketData API] Yahoo Finance fetch warning:', err);
     }
-  } catch (err) {
-    console.warn('[MarketData API] Yahoo Finance fetch warning:', err);
   }
 
   // Calculate derived metallurgical & industrial metrics
@@ -193,5 +250,9 @@ export async function GET() {
     timestamp: nowMs,
   };
 
-  return NextResponse.json(payload);
+  return NextResponse.json(payload, {
+    headers: {
+      'Cache-Control': 'no-store, max-age=0',
+    },
+  });
 }
