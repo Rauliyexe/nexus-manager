@@ -29,6 +29,7 @@ interface LiveTerminalChartProps {
  title?: string;
  assetSymbol?: string;
  unit?: string;
+ marketStatus?: 'OPEN' | 'CLOSED' | 'AFTER_HOURS';
 }
 
 export const LiveTerminalChart: React.FC<LiveTerminalChartProps> = ({
@@ -36,6 +37,7 @@ export const LiveTerminalChart: React.FC<LiveTerminalChartProps> = ({
  title = 'LME COPPER SPOT LIVE INTRADAY STREAM',
  assetSymbol = 'COPPER-LME',
  unit = 'USD/t',
+ marketStatus = 'OPEN',
 }) => {
  const [isLive, setIsLive] = useState(true);
  const [currentPrice, setCurrentPrice] = useState(initialPrice);
@@ -118,56 +120,56 @@ export const LiveTerminalChart: React.FC<LiveTerminalChartProps> = ({
  }
  }, [initialPrice]);
 
- // Real-time tick engine with configurable timeframe speed
+ // Real-time tick engine with configurable timeframe speed (APENAS COM MERCADO ABERTO!)
  useEffect(() => {
- if (!isLive) return;
+    if (!isLive || marketStatus === 'CLOSED') return;
 
- const intervalSpeed = timeframe === '1s' ? 900 : timeframe === '5s' ? 2000 : 3500;
+    const intervalSpeed = timeframe === '1s' ? 900 : timeframe === '5s' ? 2000 : 3500;
 
- const interval = setInterval(() => {
- const delta = (Math.random() - 0.49) * 8.0;
- setCurrentPrice((prev) => {
- const next = Math.max(8000, Math.round((prev + delta) * 10) / 10);
- const change = next - initialPrice;
- const pct = (change / initialPrice) * 100;
- setPriceChange(change);
- setPriceChangePct(pct);
+    const interval = setInterval(() => {
+      const delta = (Math.random() - 0.49) * 8.0;
+      setCurrentPrice((prev) => {
+        const next = Math.max(8000, Math.round((prev + delta) * 10) / 10);
+        const change = next - initialPrice;
+        const pct = (change / initialPrice) * 100;
+        setPriceChange(change);
+        setPriceChangePct(pct);
 
- const now = Date.now();
- const timeStr = new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const now = Date.now();
+        const timeStr = new Date(now).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
- const candles = allCandlesRef.current;
- if (candles.length > 0) {
- const last = candles[candles.length - 1];
- const timeThreshold = timeframe === '1s' ? 2500 : timeframe === '5s' ? 6000 : 12000;
+        const candles = allCandlesRef.current;
+        if (candles.length > 0) {
+          const last = candles[candles.length - 1];
+          const timeThreshold = timeframe === '1s' ? 2500 : timeframe === '5s' ? 6000 : 12000;
 
- if (now - last.timestamp > timeThreshold) {
- // Push new candle
- candles.push({
- time: timeStr,
- timestamp: now,
- open: last.close,
- high: Math.max(last.close, next),
- low: Math.min(last.close, next),
- close: next,
- volume: Math.floor(60 + Math.random() * 380),
- });
- if (candles.length > 250) candles.shift();
- } else {
- // Update current active candle
- last.high = Math.max(last.high, next);
- last.low = Math.min(last.low, next);
- last.close = next;
- last.volume += Math.floor(10 + Math.random() * 40);
- }
- }
+          if (now - last.timestamp > timeThreshold) {
+            // Push new candle
+            candles.push({
+              time: timeStr,
+              timestamp: now,
+              open: last.close,
+              high: Math.max(last.close, next),
+              low: Math.min(last.close, next),
+              close: next,
+              volume: Math.floor(60 + Math.random() * 380),
+            });
+            if (candles.length > 250) candles.shift();
+          } else {
+            // Update current active candle
+            last.high = Math.max(last.high, next);
+            last.low = Math.min(last.low, next);
+            last.close = next;
+            last.volume += Math.floor(10 + Math.random() * 40);
+          }
+        }
 
- return next;
- });
- }, intervalSpeed);
+        return next;
+      });
+    }, intervalSpeed);
 
- return () => clearInterval(interval);
- }, [isLive, timeframe, initialPrice]);
+    return () => clearInterval(interval);
+  }, [isLive, timeframe, initialPrice, marketStatus]);
 
  // Mouse Interaction Handlers (Pan, Hover, Zoom, Click Alert)
  const isDraggingRef = useRef(false);

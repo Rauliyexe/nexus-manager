@@ -373,6 +373,12 @@ export interface FinancialMetrics {
   providerInfo?: string;
   marketStatus?: 'OPEN' | 'CLOSED' | 'AFTER_HOURS';
   marketStatusReason?: string;
+  telemetry?: {
+    awesomeApi?: { status: string; latencyMs: number };
+    bcbPtax?: { status: string; latencyMs: number };
+    yahooLme?: { status: string; latencyMs: number };
+    responseTimeMs?: number;
+  };
 }
 
 // Hedge & Derivative Instruments Interfaces

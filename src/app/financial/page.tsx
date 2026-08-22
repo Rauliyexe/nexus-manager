@@ -15,6 +15,7 @@ import {
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { USER_ROLE_LABELS } from '@/lib/types/nexus';
+import { ApiHealthBadge } from '@/components/terminal/ApiHealthBadge';
 
 export default function FinancialDashboardPage() {
   const { currentUser, hasFinancialAccess, financialMetrics, profiles, switchUser } = useNexus();
@@ -120,13 +121,16 @@ export default function FinancialDashboardPage() {
             ))}
           </div>
 
-          <Link
-            href="/terminal"
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition-colors shadow-xs"
-          >
-            <Terminal className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span>Terminal Bloomberg</span>
-          </Link>
+          <div className="flex items-center space-x-2">
+            <ApiHealthBadge />
+            <Link
+              href="/terminal"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold transition-colors shadow-xs"
+            >
+              <Terminal className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Terminal Bloomberg</span>
+            </Link>
+          </div>
         </div>
       </div>
 

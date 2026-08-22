@@ -10,6 +10,7 @@ import { LiveCashflowChart } from './LiveCashflowChart';
 import { HedgeCalculator } from './HedgeCalculator';
 import { CashflowForecastStressTest } from './CashflowForecastStressTest';
 import { CommodityArbitragePanel } from './CommodityArbitragePanel';
+import { ApiHealthBadge } from './ApiHealthBadge';
 
 export const BloombergTerminal: React.FC = () => {
   const { currentUser, hasFinancialAccess, financialMetrics, profiles, switchUser, setAppMode } = useNexus();
@@ -98,14 +99,16 @@ export const BloombergTerminal: React.FC = () => {
             COPPER GROUP TERMINAL
           </span>
           <span className="text-emerald-400">LME COPPER: ${financialMetrics.copperSpotUSD.toLocaleString()}/t (+1.8%)</span>
-          <span className="text-amber-300">USD/BRL: R$ {financialMetrics.usdBrlRate}</span>
+          <span className="text-amber-300">USD/BRL: R$ {financialMetrics.usdBrlRate.toFixed(4)}</span>
           <span className="text-sky-400">COPPER BRL: R$ {financialMetrics.copperSpotBRLPerKg}/kg</span>
           <span className="text-emerald-400">SUCATA BUY: R$ {financialMetrics.scrapBuyPriceBRLPerKg}/kg</span>
           <span className="text-amber-300">CAIXA: R$ {(financialMetrics.consolidatedCash / 1000000).toFixed(2)}M</span>
         </div>
 
-        {/* Real-Time Connection & API Status Indicator */}
-        <div className="flex items-center space-x-3 text-[10px] shrink-0">
+        {/* Real-Time Connection & Discreet API Health Verifier */}
+        <div className="flex items-center space-x-2.5 text-[10px] shrink-0">
+          <ApiHealthBadge />
+
           <span className="text-slate-400 font-mono hidden xl:inline-block">FONTE: {providerInfo}</span>
           <span className="text-slate-400 font-mono">
             Última atualização: <strong className="text-slate-200">{formattedApiTime}</strong>
@@ -124,7 +127,7 @@ export const BloombergTerminal: React.FC = () => {
           ) : (
             <span className="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              <span>● LIVE ({connectionState})</span>
+              <span>● LIVE</span>
             </span>
           )}
         </div>
@@ -179,6 +182,7 @@ export const BloombergTerminal: React.FC = () => {
             title="LME SPOT COPPER REAL-TIME TICK STREAM"
             assetSymbol="LME-CU"
             unit="USD/t"
+            marketStatus={marketStatus}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -277,6 +281,7 @@ export const BloombergTerminal: React.FC = () => {
             title="LME COPPER SPOT INTRADAY HIGH FREQUENCY CANDLESTICKS"
             assetSymbol="LME-COPPER"
             unit="USD/t"
+            marketStatus={marketStatus}
           />
 
           <div className="bg-slate-950 border border-amber-500/30 p-4 rounded space-y-4">
