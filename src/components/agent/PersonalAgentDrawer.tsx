@@ -99,6 +99,8 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const transcriptRef = useRef('');
+  const silenceTimerRef = useRef<any>(null);
 
  // Estados de Chave e Modelo
  const [apiKeyInput, setApiKeyInput] = useState('');
@@ -216,6 +218,30 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
     }
   };
 
+  const submitVoiceCommand = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    isListeningRef.current = false;
+    setIsListeningVoice(false);
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+
+    const spoken = (transcriptRef.current || voiceTranscript || inputMessage).trim();
+    if (spoken && !isProcessingRef.current) {
+      transcriptRef.current = '';
+      setVoiceTranscript('');
+      setInputMessage('');
+      handleSendMessage(spoken);
+    }
+  };
+
   const startVoiceRecording = () => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -232,14 +258,20 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
         } catch (e) {}
       }
 
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+
       const recognition = new SpeechRecognition();
       recognition.lang = 'pt-BR';
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
 
       recognition.onstart = () => {
         isListeningRef.current = true;
         setIsListeningVoice(true);
+        transcriptRef.current = '';
         setVoiceTranscript('');
         playSound('BUTTON_CLICK');
       };
@@ -252,19 +284,37 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
           }
         }
         const clean = full.trim();
+        transcriptRef.current = clean;
         setVoiceTranscript(clean);
         setInputMessage(clean);
+
+        // Reinicia o timer de silêncio: se ficar 3.5 segundos em silêncio após falar, envia automaticamente
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        silenceTimerRef.current = setTimeout(() => {
+          if (isListeningRef.current && transcriptRef.current.trim().length > 3) {
+            submitVoiceCommand();
+          }
+        }, 3500);
       };
 
       recognition.onerror = (e: any) => {
         console.warn('Voice recognition error:', e);
-        isListeningRef.current = false;
-        setIsListeningVoice(false);
+        if (e.error !== 'no-speech') {
+          isListeningRef.current = false;
+          setIsListeningVoice(false);
+        }
       };
 
       recognition.onend = () => {
-        isListeningRef.current = false;
-        setIsListeningVoice(false);
+        // Se ainda estava no modo escuta e possui texto gravado, envia o comando
+        if (isListeningRef.current && transcriptRef.current.trim()) {
+          submitVoiceCommand();
+        } else {
+          isListeningRef.current = false;
+          setIsListeningVoice(false);
+        }
       };
 
       recognition.start();
@@ -277,21 +327,7 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
   };
 
   const stopVoiceRecording = () => {
-    isListeningRef.current = false;
-    setIsListeningVoice(false);
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-
-    const spoken = (voiceTranscript || inputMessage).trim();
-    if (spoken && !isProcessingRef.current) {
-      setVoiceTranscript('');
-      setInputMessage('');
-      handleSendMessage(spoken);
-    }
+    submitVoiceCommand();
   };
 
   const handleSendMessage = async (customText?: string) => {
