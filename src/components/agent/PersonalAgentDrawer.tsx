@@ -93,10 +93,12 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  const [expandedThoughts, setExpandedThoughts] = useState<Record<string, boolean>>({});
  const [showConfigModal, setShowConfigModal] = useState(false);
 
- // Estados de Comando por Voz
- const [isListeningVoice, setIsListeningVoice] = useState(false);
- const [voiceTranscript, setVoiceTranscript] = useState('');
- const recognitionRef = useRef<any>(null);
+ // Estados e Refs de Comando por Voz e Proteção Anti-Loop
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
+  const isProcessingRef = useRef(false);
 
  // Estados de Chave e Modelo
  const [apiKeyInput, setApiKeyInput] = useState('');
@@ -205,186 +207,212 @@ export const PersonalAgentDrawer: React.FC<PersonalAgentDrawerProps> = ({
  }
  };
 
- // Iniciar e Parar Reconhecimento de Voz de Comandos Operacionais
- const toggleVoiceRecording = () => {
-  if (isListeningVoice) {
-    stopVoiceRecording();
-  } else {
-    startVoiceRecording();
-  }
- };
-
- const startVoiceRecording = () => {
-  const SpeechRecognition =
-    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    alert('Seu navegador não possui suporte direto ao Web Speech API. Digite o comando de voz no campo de texto.');
-    return;
-  }
-
-  try {
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'pt-BR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-      setIsListeningVoice(true);
-      setVoiceTranscript('');
-      playSound('BUTTON_CLICK');
-    };
-
-    recognition.onresult = (event: any) => {
-      let full = '';
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i] && event.results[i][0]) {
-          full += event.results[i][0].transcript + ' ';
-        }
-      }
-      const clean = full.trim();
-      setVoiceTranscript(clean);
-      setInputMessage(clean);
-    };
-
-    recognition.onerror = (e: any) => {
-      console.warn('Voice recognition error:', e);
-      setIsListeningVoice(false);
-    };
-
-    recognition.onend = () => {
-      setIsListeningVoice(false);
-    };
-
-    recognition.start();
-    recognitionRef.current = recognition;
-  } catch (e) {
-    console.warn('Erro ao iniciar reconhecimento de voz:', e);
-    setIsListeningVoice(false);
-  }
- };
-
- const stopVoiceRecording = () => {
-  if (recognitionRef.current) {
-    try {
-      recognitionRef.current.stop();
-    } catch (e) {}
-  }
-  setIsListeningVoice(false);
-  const spoken = (voiceTranscript || inputMessage).trim();
-  if (spoken) {
-    handleSendMessage(spoken);
-    setVoiceTranscript('');
-  }
- };
-
- const handleSendMessage = async (customText?: string) => {
-  const textToSend = customText || inputMessage;
-  if (!textToSend.trim() || loading) return;
-
-  if (isListeningVoice) {
-    stopVoiceRecording();
-  }
-
-  const userTimestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const userMsg: AgentChatMessage = {
-    id: `user-${Date.now()}`,
-    sender: 'user',
-    text: textToSend.trim(),
-    timestamp: userTimestamp,
+  // Iniciar e Parar Reconhecimento de Voz de Comandos Operacionais
+  const toggleVoiceRecording = () => {
+    if (isListeningRef.current) {
+      stopVoiceRecording();
+    } else {
+      startVoiceRecording();
+    }
   };
 
-  setChatHistory((prev) => [...prev, userMsg]);
-  if (!customText) setInputMessage('');
-  setLoading(true);
-  setActiveTool('Valkyra raciocinando e executando comandos operacionais...');
+  const startVoiceRecording = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-  try {
-    const geminiKey = getStoredGeminiKey();
-    const geminiModel = getStoredGeminiModel();
-    const isThinking = getStoredGeminiThinkingEnabled();
-
-    const response = await fetch('/api/ai/agent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
-        ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
-        'x-gemini-thinking': String(isThinking),
-      },
-      body: JSON.stringify({
-        message: textToSend.trim(),
-        history: chatHistory,
-        context: {
-          currentUser,
-          tasks,
-          areas,
-          notifications,
-          conversations,
-          messages,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Falha ao processar solicitação com o agente');
+    if (!SpeechRecognition) {
+      alert('Seu navegador não possui suporte direto ao Web Speech API. Digite o comando de voz no campo de texto.');
+      return;
     }
 
-    const data = await response.json();
+    try {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
 
-    // ── Execução das Ações Operacionais Reais no Command Center ──
-    if (data.actionTaken) {
-      if (data.actionTaken.type === 'TASK_CREATED') {
-        delegateTask(data.actionTaken.data);
-        playSound('TASK_CREATED');
-      } else if (data.actionTaken.type === 'TICKET_CREATED') {
-        createTicket(data.actionTaken.data);
-        playSound('TASK_CREATED');
-      } else if (data.actionTaken.type === 'STATUS_SUBMITTED') {
-        submitDailyStatus(
-          data.actionTaken.data.area_id,
-          data.actionTaken.data.status,
-          data.actionTaken.data.justification
-        );
-        playSound('TASK_COMPLETED');
-      } else if (data.actionTaken.type === 'TASK_UPDATED') {
-        updateTaskStatus(data.actionTaken.data.taskId, data.actionTaken.data.status);
-        playSound('TASK_COMPLETED');
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isListeningRef.current = true;
+        setIsListeningVoice(true);
+        setVoiceTranscript('');
+        playSound('BUTTON_CLICK');
+      };
+
+      recognition.onresult = (event: any) => {
+        let full = '';
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i] && event.results[i][0]) {
+            full += event.results[i][0].transcript + ' ';
+          }
+        }
+        const clean = full.trim();
+        setVoiceTranscript(clean);
+        setInputMessage(clean);
+      };
+
+      recognition.onerror = (e: any) => {
+        console.warn('Voice recognition error:', e);
+        isListeningRef.current = false;
+        setIsListeningVoice(false);
+      };
+
+      recognition.onend = () => {
+        isListeningRef.current = false;
+        setIsListeningVoice(false);
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (e) {
+      console.warn('Erro ao iniciar reconhecimento de voz:', e);
+      isListeningRef.current = false;
+      setIsListeningVoice(false);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    isListeningRef.current = false;
+    setIsListeningVoice(false);
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+
+    const spoken = (voiceTranscript || inputMessage).trim();
+    if (spoken && !isProcessingRef.current) {
+      setVoiceTranscript('');
+      setInputMessage('');
+      handleSendMessage(spoken);
+    }
+  };
+
+  const handleSendMessage = async (customText?: string) => {
+    if (isProcessingRef.current || loading) return;
+
+    if (isListeningRef.current) {
+      isListeningRef.current = false;
+      setIsListeningVoice(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
       }
     }
 
-    const agentMsgId = `agent-${Date.now()}`;
-    const agentMsg: AgentChatMessage = {
-      id: agentMsgId,
-      sender: 'agent',
-      text: data.text,
-      thoughtProcess: data.thoughtProcess,
-      toolsUsed: data.toolsUsed,
-      actionTaken: data.actionTaken,
-      engineType: data.engineType,
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    const textToSend = (customText || inputMessage).trim();
+    if (!textToSend) return;
+
+    isProcessingRef.current = true;
+    setInputMessage('');
+    setVoiceTranscript('');
+    setLoading(true);
+
+    const userTimestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const userMsg: AgentChatMessage = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: textToSend,
+      timestamp: userTimestamp,
     };
 
-    // Abre automaticamente o pensamento se for uma resposta rica
-    if (data.thoughtProcess) {
-      setExpandedThoughts((prev) => ({ ...prev, [agentMsgId]: true }));
+    setChatHistory((prev) => [...prev, userMsg]);
+    setActiveTool('Valkyra raciocinando e executando comandos operacionais...');
+
+    try {
+      const geminiKey = getStoredGeminiKey();
+      const geminiModel = getStoredGeminiModel();
+      const isThinking = getStoredGeminiThinkingEnabled();
+
+      const response = await fetch('/api/ai/agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(geminiKey ? { 'x-gemini-api-key': geminiKey } : {}),
+          ...(geminiModel ? { 'x-gemini-model': geminiModel } : {}),
+          'x-gemini-thinking': String(isThinking),
+        },
+        body: JSON.stringify({
+          message: textToSend,
+          history: chatHistory,
+          context: {
+            currentUser,
+            tasks,
+            areas,
+            notifications,
+            conversations,
+            messages,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao processar solicitação com o agente');
+      }
+
+      const data = await response.json();
+
+      // ── Execução das Ações Operacionais Reais no Command Center ──
+      if (data.actionTaken) {
+        if (data.actionTaken.type === 'TASK_CREATED') {
+          delegateTask(data.actionTaken.data);
+          playSound('TASK_CREATED');
+        } else if (data.actionTaken.type === 'TICKET_CREATED') {
+          createTicket(data.actionTaken.data);
+          playSound('TASK_CREATED');
+        } else if (data.actionTaken.type === 'STATUS_SUBMITTED') {
+          submitDailyStatus(
+            data.actionTaken.data.area_id,
+            data.actionTaken.data.status,
+            data.actionTaken.data.justification
+          );
+          playSound('TASK_COMPLETED');
+        } else if (data.actionTaken.type === 'TASK_UPDATED') {
+          updateTaskStatus(data.actionTaken.data.taskId, data.actionTaken.data.status);
+          playSound('TASK_COMPLETED');
+        }
+      }
+
+      const agentMsgId = `agent-${Date.now()}`;
+      const agentMsg: AgentChatMessage = {
+        id: agentMsgId,
+        sender: 'agent',
+        text: data.text,
+        thoughtProcess: data.thoughtProcess,
+        toolsUsed: data.toolsUsed,
+        actionTaken: data.actionTaken,
+        engineType: data.engineType,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      // Abre automaticamente o pensamento se for uma resposta rica
+      if (data.thoughtProcess) {
+        setExpandedThoughts((prev) => ({ ...prev, [agentMsgId]: true }));
+      }
+
+      setChatHistory((prev) => [...prev, agentMsg]);
+      playSound('AI_READY');
+    } catch (err) {
+      const errorMsg: AgentChatMessage = {
+        id: `err-${Date.now()}`,
+        sender: 'agent',
+        text: 'Não consegui processar essa requisição no momento. Por favor, tente novamente.',
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setChatHistory((prev) => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+      setActiveTool(null);
+      isProcessingRef.current = false;
     }
-
-    setChatHistory((prev) => [...prev, agentMsg]);
-    playSound('AI_READY');
-  } catch (err) {
-    const errorMsg: AgentChatMessage = {
-      id: `err-${Date.now()}`,
-      sender: 'agent',
-      text: 'Não consegui processar essa requisição no momento. Por favor, tente novamente.',
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    };
-    setChatHistory((prev) => [...prev, errorMsg]);
-  } finally {
-    setLoading(false);
-    setActiveTool(null);
-  }
- };
+  };
 
  const handleClearHistory = () => {
  setChatHistory([
