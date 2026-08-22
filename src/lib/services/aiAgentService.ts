@@ -649,59 +649,64 @@ ${
  .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} • Prazo: ${t.due_date}) — *Status: ${t.status}*`)
  .join('\n');
 
- return {
- text: `Olá, **${context.currentUser.name}**! Encontrei **${parsed.count} tarefa(s)** sob sua gestão:\n\n${taskList}\n\n **Dica:** Você pode me pedir para concluir qualquer uma delas dizendo: *"Conclua a tarefa ${parsed.tasks[0]?.code}"*!`,
- thoughtProcess: thoughts.join('\n'),
- toolsUsed,
- engineType: 'local',
- };
- }
+  return {
+    text: `Olá, **${context.currentUser.name}**! Encontrei **${parsed.count} tarefa(s)** sob sua gestão:\n\n${taskList}\n\n💡 **Dica:** Você pode me pedir para concluir qualquer uma delas dizendo: *"Conclua a tarefa ${parsed.tasks[0]?.code}"*!`,
+    thoughtProcess: thoughts.join('\n'),
+    toolsUsed,
+    engineType: 'local',
+  };
+  }
 
- // Intenção 3: Criar / Agendar Nova Tarefa
- if (
- lower.includes('crie uma tarefa') ||
- lower.includes('criar tarefa') ||
- lower.includes('nova tarefa') ||
- lower.includes('agende') ||
- lower.includes('nova demanda')
- ) {
- toolsUsed.push('create_task');
- thoughts.push('[Dedução] Intenção de criação e delegação de tarefa detectada.');
+  // Intenção 3: Criar / Delegar / Agendar Nova Tarefa
+  if (
+    lower.includes('crie uma tarefa') ||
+    lower.includes('criar tarefa') ||
+    lower.includes('nova tarefa') ||
+    lower.includes('delegar tarefa') ||
+    lower.includes('delegar para') ||
+    lower.includes('agende') ||
+    lower.includes('agendar') ||
+    lower.includes('nova demanda') ||
+    lower.includes('adicionar tarefa') ||
+    lower.includes('cadastrar tarefa') ||
+    (lower.includes('tarefa') && (lower.includes('criar') || lower.includes('crie') || lower.includes('delegar') || lower.includes('adicione') || lower.includes('cadastre')))
+  ) {
+    toolsUsed.push('create_task');
+    thoughts.push('[Dedução] Intenção de criação e delegação de tarefa detectada.');
 
- const tomorrow = new Date();
- tomorrow.setDate(tomorrow.getDate() + 1);
- const dueDate = tomorrow.toISOString().split('T')[0];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dueDate = tomorrow.toISOString().split('T')[0];
 
- const cleanTitle = userMessage
- .replace(/crie uma tarefa (para|de)?/i, '')
- .replace(/criar tarefa (para|de)?/i, '')
- .replace(/agende (uma tarefa|uma reunião)?/i, '')
- .trim();
+    const cleanTitle = userMessage
+      .replace(/valkyra,?\s*/i, '')
+      .replace(/(crie|criar|adicione|adicionar|cadastre|cadastrar|delegar|delegue|agende|agendar)\s+(uma\s+)?(nova\s+)?(tarefa|demanda)?\s*(para|de|sobre)?/i, '')
+      .trim();
 
- const title = cleanTitle ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Revisão Operacional de Demandas';
- const priority = lower.includes('urgente') || lower.includes('critica') ? 'HIGH' : 'MEDIUM';
+    const title = cleanTitle ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Demanda Operacional Reportada';
+    const priority: TaskPriority = lower.includes('urgente') || lower.includes('critica') || lower.includes('crítica') ? 'HIGH' : 'MEDIUM';
 
- thoughts.push(`[Execução] Criando tarefa: "${title}" | Prazo: ${dueDate} | Prioridade: ${priority}`);
+    thoughts.push(`[Execução] Criando tarefa: "${title}" | Prazo: ${dueDate} | Prioridade: ${priority}`);
 
- const createResult = await executeAgentTool(
- 'create_task',
- {
- title,
- description: `Demanda criada via Personal Copilot para ${context.currentUser.name}`,
- due_date: dueDate,
- priority,
- },
- context
- );
+    const createResult = await executeAgentTool(
+      'create_task',
+      {
+        title,
+        description: `Demanda criada via Personal Copilot por ${context.currentUser.name}: "${userMessage}"`,
+        due_date: dueDate,
+        priority,
+      },
+      context
+    );
 
- return {
- text: ` **Tarefa criada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Prazo de Entrega:** ${dueDate}\n• **Prioridade:** ${priority === 'HIGH' ? 'Alta' : 'Média'}\n• **Área:** Geral\n\nA demanda já está registrada e visível no seu quadro operacional.`,
- thoughtProcess: thoughts.join('\n'),
- toolsUsed,
- actionTaken: createResult.actionTaken,
- engineType: 'local',
- };
- }
+    return {
+      text: `📋 **Tarefa criada e delegada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Prazo de Entrega:** ${dueDate}\n• **Prioridade:** ${priority === 'HIGH' ? '🔴 Alta / Urgente' : '🟡 Média'}\n• **Área:** Geral\n\nA demanda já está registrada e visível no seu quadro operacional no **Hub de Demandas**!`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      actionTaken: createResult.actionTaken,
+      engineType: 'local',
+    };
+  }
 
  // Intenção 4: Marcar Tarefa como Concluída por Comando Direto
  if (
