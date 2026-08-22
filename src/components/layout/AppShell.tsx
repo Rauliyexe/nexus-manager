@@ -60,8 +60,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <LoadingSplashScreen onFinish={handleFinishSplash} />;
   }
 
-  // 2. Tela de Login Corporativa (se não estiver autenticado)
-  if (!isAuthenticated && !isAuthChecking) {
+  // 2. Enquanto verifica a sessão salva, mantém tela escura com loader seguro
+  if (isAuthChecking) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0B120E] text-white flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 border-2 border-[#76B38B] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs font-mono text-[#6F9580] uppercase tracking-wider">
+          Validando Credenciais Yggdron...
+        </span>
+      </div>
+    );
+  }
+
+  // 3. Bloqueio 100% rigoroso: se não estiver autenticado, exibe SEMPRE a tela de login
+  if (!isAuthenticated) {
     return <LoginScreen />;
   }
 
