@@ -2216,6 +2216,7 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       email: data.email.trim().toLowerCase(),
       role: data.role,
       department: data.department || 'Operacional',
+      active: true,
     };
 
     const updatedProfiles = [...profiles, newProfile];
