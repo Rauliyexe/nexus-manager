@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Search, Sun, Moon, ChevronRight, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { Bell, Search, Sun, Moon, ChevronRight, Sparkles, Volume2, VolumeX, LogOut } from 'lucide-react';
 import { useNexus } from '@/lib/store/nexusContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { USER_ROLE_LABELS } from '@/lib/types/nexus';
@@ -33,7 +33,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   onToggleAgentDrawer,
 }) => {
   const pathname = usePathname();
-  const { currentUser, profiles, switchUser, notifications, theme, toggleTheme, soundEnabled, toggleSound } = useNexus();
+  const { currentUser, profiles, switchUser, logout, notifications, theme, toggleTheme, soundEnabled, toggleSound } = useNexus();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -199,6 +199,20 @@ export const Topbar: React.FC<TopbarProps> = ({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Logout */}
+              <div className="pt-1.5 mt-1 border-t border-[#D5E0D7] dark:border-[#1E3125]">
+                <button
+                  onClick={() => {
+                    logout();
+                    setShowUserDropdown(false);
+                  }}
+                  className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center space-x-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Encerrar Sessão</span>
+                </button>
               </div>
             </div>
           )}

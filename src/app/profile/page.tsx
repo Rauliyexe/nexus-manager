@@ -22,6 +22,7 @@ import {
  Sparkles,
  ArrowRight,
  TrendingUp,
+ LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -30,6 +31,7 @@ export default function ProfilePage() {
  currentUser,
  profiles,
  switchUser,
+ logout,
  savedReports,
  deleteSavedReport,
  syncReportToDailyClosing,
@@ -109,6 +111,15 @@ export default function ProfilePage() {
  <Briefcase className="w-4 h-4" />
  <span>Meu Hub de Trabalho</span>
  </Link>
+
+ <button
+ onClick={logout}
+ className="px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+ title="Encerrar Sessão"
+ >
+ <LogOut className="w-4 h-4" />
+ <span>Sair</span>
+ </button>
  </div>
  </div>
 

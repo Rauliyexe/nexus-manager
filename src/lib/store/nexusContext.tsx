@@ -1124,6 +1124,10 @@ interface NexusContextType {
  addReaction: (conversationId: string, messageId: string, emoji: string) => void;
  sendThreadReply: (conversationId: string, parentMessageId: string, content: string) => Promise<void>;
  deleteMessage: (conversationId: string, messageId: string) => void;
+ isAuthenticated: boolean;
+ isAuthChecking: boolean;
+ login: (emailOrUserId: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+ logout: () => void;
  savedReports: SavedAudioReport[];
  saveAudioReport: (report: Omit<SavedAudioReport, 'id' | 'createdAt'>) => SavedAudioReport;
  deleteSavedReport: (reportId: string) => void;
@@ -1195,21 +1199,42 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  const [messages, setMessages] = useState<Record<string, Message[]>>(SEED_MESSAGES);
  const [savedReports, setSavedReports] = useState<SavedAudioReport[]>([]);
  const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>(DEFAULT_ROLE_PERMISSIONS);
+ const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+ const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
- useEffect(() => {
- try {
- const storedReports = localStorage.getItem('nexus_saved_audio_reports');
- if (storedReports) {
- setSavedReports(JSON.parse(storedReports));
- }
- const storedPermissions = localStorage.getItem('nexus_role_permissions_matrix');
- if (storedPermissions) {
- setRolePermissions(JSON.parse(storedPermissions));
- }
- } catch (e) {
- console.warn('Erro ao carregar dados do localStorage:', e);
- }
- }, []);
+  useEffect(() => {
+    try {
+      const storedReports = localStorage.getItem('nexus_saved_audio_reports');
+      if (storedReports) {
+        setSavedReports(JSON.parse(storedReports));
+      }
+      const storedPermissions = localStorage.getItem('nexus_role_permissions_matrix');
+      if (storedPermissions) {
+        setRolePermissions(JSON.parse(storedPermissions));
+      }
+      // Verificação e Restauração de Sessão de Autenticação
+      const authSession = localStorage.getItem('yggdron_auth_session');
+      const storedUserId = localStorage.getItem('yggdron_auth_user_id');
+      if (authSession === 'true' && storedUserId) {
+        const user = SEED_PROFILES.find(
+          (p) => p.id === storedUserId || p.email.toLowerCase() === storedUserId.toLowerCase()
+        );
+        if (user) {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          if (user.role === 'DONO') {
+            setHubRoleView('OWNER');
+          } else {
+            setHubRoleView('EMPLOYEE');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar dados do localStorage:', e);
+    } finally {
+      setIsAuthChecking(false);
+    }
+  }, []);
 
  const toggleRolePermission = (role: UserRole, feature: FeatureKey) => {
  setRolePermissions((prev) => {
@@ -1390,17 +1415,69 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  };
  });
 
- const switchUser = (userId: string) => {
- const found = profiles.find((p) => p.id === userId);
- if (found) {
- setCurrentUser(found);
- if (found.role === 'DONO') {
- setHubRoleView('OWNER');
- } else {
- setHubRoleView('EMPLOYEE');
- }
- }
- };
+  const login = async (
+    emailOrUserId: string,
+    password?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const normalizedInput = emailOrUserId.trim().toLowerCase();
+
+    // Encontra usuário por ID, E-mail ou Nome
+    const matchedUser = profiles.find(
+      (p) =>
+        p.id.toLowerCase() === normalizedInput ||
+        p.email.toLowerCase() === normalizedInput ||
+        p.name.toLowerCase() === normalizedInput
+    );
+
+    if (!matchedUser) {
+      return { success: false, error: 'Credencial inválida ou usuário não encontrado.' };
+    }
+
+    if (password !== undefined && password.trim() !== '' && password.length < 3) {
+      return { success: false, error: 'A senha informada deve possuir no mínimo 3 caracteres.' };
+    }
+
+    setCurrentUser(matchedUser);
+    setIsAuthenticated(true);
+
+    if (matchedUser.role === 'DONO') {
+      setHubRoleView('OWNER');
+    } else {
+      setHubRoleView('EMPLOYEE');
+    }
+
+    try {
+      localStorage.setItem('yggdron_auth_session', 'true');
+      localStorage.setItem('yggdron_auth_user_id', matchedUser.id);
+    } catch (e) {}
+
+    soundService.play('BUTTON_CLICK');
+    return { success: true };
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    try {
+      localStorage.removeItem('yggdron_auth_session');
+      localStorage.removeItem('yggdron_auth_user_id');
+    } catch (e) {}
+    soundService.play('MODE_SWITCH');
+  };
+
+  const switchUser = (userId: string) => {
+    const found = profiles.find((p) => p.id === userId);
+    if (found) {
+      setCurrentUser(found);
+      if (found.role === 'DONO') {
+        setHubRoleView('OWNER');
+      } else {
+        setHubRoleView('EMPLOYEE');
+      }
+      try {
+        localStorage.setItem('yggdron_auth_user_id', found.id);
+      } catch (e) {}
+    }
+  };
 
  const submitDailyStatus = async (
  areaId: string,
@@ -2177,6 +2254,10 @@ export const NexusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
  addReaction,
  sendThreadReply,
  deleteMessage,
+ isAuthenticated,
+ isAuthChecking,
+ login,
+ logout,
  savedReports,
  saveAudioReport,
  deleteSavedReport,

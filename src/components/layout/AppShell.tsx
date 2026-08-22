@@ -14,10 +14,19 @@ import { IncomingTaskPopUpBanner } from './IncomingTaskPopUpBanner';
 import { TaskDetailsPopUpModal } from '../modals/TaskDetailsPopUpModal';
 import { OwnerCriticalAlertModal } from '../modals/OwnerCriticalAlertModal';
 import { LoadingSplashScreen } from './LoadingSplashScreen';
+import { LoginScreen } from '../auth/LoginScreen';
 import { useNexus } from '@/lib/store/nexusContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { appMode, isTransitioningMode, setAppMode, activePopUpTask, setActivePopUpTask } = useNexus();
+  const {
+    appMode,
+    isTransitioningMode,
+    setAppMode,
+    activePopUpTask,
+    setActivePopUpTask,
+    isAuthenticated,
+    isAuthChecking,
+  } = useNexus();
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isAgentDrawerOpen, setIsAgentDrawerOpen] = useState(false);
@@ -46,11 +55,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 1. Splash Screen Inicial (exibida no primeiro carregamento do navegador)
+  if (showSplash) {
+    return <LoadingSplashScreen onFinish={handleFinishSplash} />;
+  }
+
+  // 2. Tela de Login Corporativa (se não estiver autenticado)
+  if (!isAuthenticated && !isAuthChecking) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className="h-screen max-h-screen w-screen overflow-hidden bg-[#EEF2EE] dark:bg-[#0B120E] text-[#111D15] dark:text-[#F2F6F3] flex flex-col font-sans antialiased">
-      {/* Premium Initial Loading Splash Screen (Estritamente 1x no primeiro acesso do navegador) */}
-      {showSplash && <LoadingSplashScreen onFinish={handleFinishSplash} />}
-
       {/* Mode Transition CRT Animation Overlay */}
       {isTransitioningMode && <ModeTransitionOverlay />}
 
