@@ -554,145 +554,68 @@ export async function runLocalAgentInference(
  const lastAgentMsg = history.filter((h) => h.sender === 'agent').slice(-1)[0]?.text || '';
  const contextMentionsTasks = lastAgentMsg.includes('tarefa') || lastAgentMsg.includes('TASK-') || lastAgentMsg.includes('pendente');
 
- // Intenção 1: Como concluir / Como resolver / Dúvida sobre finalização de tarefas (inclui typos como "conlui-las")
- const isHowToComplete =
- lower.includes('conlui') ||
- lower.includes('conclui') ||
- lower.includes('finaliz') ||
- lower.includes('como posso') ||
- lower.includes('como faco') ||
- lower.includes('como fazer') ||
- lower.includes('como resolver') ||
- lower.includes('como fechar') ||
- (contextMentionsTasks && (lower.includes('como') || lower.includes('quais') || lower.includes('fazer')));
-
- if (isHowToComplete && !lower.includes('crie') && !lower.includes('criar')) {
- toolsUsed.push('get_my_tasks');
- thoughts.push('[Dedução] Identificada intenção de orientação sobre como concluir/executar tarefas.');
- thoughts.push('[Ação] Consultando base de tarefas ativas do usuário para contextualizar a resposta...');
-
- const taskResult = await executeAgentTool('get_my_tasks', { filter: 'ALL' }, context);
- const parsed = JSON.parse(taskResult.content);
- const pendingTasks = (parsed.tasks || []).filter((t: any) => t.status !== 'COMPLETED');
-
- thoughts.push(`[Resultado] ${pendingTasks.length} tarefa(s) pendente(s) identificada(s). Estruturando passo a passo executivo.`);
-
- let taskExamples = '';
- if (pendingTasks.length > 0) {
- taskExamples = pendingTasks
- .slice(0, 3)
- .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} · Prazo: ${t.due_date})`)
- .join('\n');
- }
-
- const responseText = `Para concluir suas tarefas no **Yggdron Command Center**, você possui **3 maneiras rápidas e práticas**:
-
-### 1. Diretamente Comigo (Copiloto IA)
-Basta me enviar uma mensagem rápida informando o código da tarefa. Por exemplo:
-> *"Conclua a tarefa ${pendingTasks[0]?.code || 'TASK-0001'}"* ou *"Marque ${pendingTasks[0]?.title || 'a primeira tarefa'} como concluída"*.
-Eu atualizo o status no sistema instantaneamente para você!
-
-### 2. Pelo Painel de Atividades & Rituais
-No módulo de **Tarefas** ou no seu **Dashboard Executivo**:
-1. Localize o card da tarefa na sua lista;
-2. Clique no ícone circular de **Checkmark ()** para concluir;
-3. O status mudará imediatamente para **COMPLETED** com registro de auditoria.
-
-### 3. Por Delegação ou Reatribuição
-Caso uma tarefa dependa de outro setor ou membro da equipe, você pode abrir os detalhes da demanda e clicar em **Delegar** para transferir a responsabilidade.
-
-${
- pendingTasks.length > 0
- ? `\n **Tarefas pendentes sob sua responsabilidade agora:**\n${taskExamples}\n\nDeseja que eu conclua alguma delas agora? Basta me indicar qual!`
- : '\n Você não possui nenhuma tarefa pendente no momento. Todas estão concluídas!'
-}`;
-
- return {
- text: responseText,
- thoughtProcess: thoughts.join('\n'),
- toolsUsed,
- engineType: 'local',
- };
- }
-
- // Intenção 2: Consulta de Tarefas / O que tenho hoje / Atrasadas / Pendências
- if (
- lower.includes('hoje') ||
- lower.includes('tarefa') ||
- lower.includes('fazer') ||
- lower.includes('atrasad') ||
- lower.includes('pendent') ||
- lower.includes('minhas demand')
- ) {
- toolsUsed.push('get_my_tasks');
- const filter = lower.includes('atrasad') ? 'OVERDUE' : lower.includes('hoje') ? 'TODAY' : 'ALL';
- thoughts.push(`[Dedução] Consulta de tarefas com filtro: ${filter}`);
-
- const taskResult = await executeAgentTool('get_my_tasks', { filter }, context);
- const parsed = JSON.parse(taskResult.content);
-
- if (parsed.count === 0) {
- thoughts.push('[Resultado] Nenhuma tarefa encontrada no filtro solicitado.');
- return {
- text: `Olá, **${context.currentUser.name}**. Consultei o Command Center e você **não possui tarefas pendentes** no filtro solicitado (${
- filter === 'TODAY' ? 'hoje' : filter === 'OVERDUE' ? 'atrasadas' : 'geral'
- }). Toda a sua operação está em dia!`,
- thoughtProcess: thoughts.join('\n'),
- toolsUsed,
- engineType: 'local',
- };
- }
-
- thoughts.push(`[Resultado] ${parsed.count} tarefa(s) encontrada(s). Formatando lista.`);
-
- const taskList = parsed.tasks
- .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} • Prazo: ${t.due_date}) — *Status: ${t.status}*`)
- .join('\n');
-
-  return {
-    text: `Olá, **${context.currentUser.name}**! Encontrei **${parsed.count} tarefa(s)** sob sua gestão:\n\n${taskList}\n\n💡 **Dica:** Você pode me pedir para concluir qualquer uma delas dizendo: *"Conclua a tarefa ${parsed.tasks[0]?.code}"*!`,
-    thoughtProcess: thoughts.join('\n'),
-    toolsUsed,
-    engineType: 'local',
-  };
-  }
-
-  // Intenção 3: Criar / Delegar / Agendar Nova Tarefa
-  if (
+  // ── PRIORIDADE 1: Criar / Delegar / Agendar Nova Tarefa ──
+  const isCreateTask =
     lower.includes('crie uma tarefa') ||
     lower.includes('criar tarefa') ||
     lower.includes('nova tarefa') ||
     lower.includes('delegar tarefa') ||
     lower.includes('delegar para') ||
-    lower.includes('agende') ||
-    lower.includes('agendar') ||
+    lower.includes('agende uma tarefa') ||
+    lower.includes('agendar tarefa') ||
     lower.includes('nova demanda') ||
     lower.includes('adicionar tarefa') ||
     lower.includes('cadastrar tarefa') ||
-    (lower.includes('tarefa') && (lower.includes('criar') || lower.includes('crie') || lower.includes('delegar') || lower.includes('adicione') || lower.includes('cadastre')))
-  ) {
+    (lower.startsWith('crie') && (lower.includes('tarefa') || lower.includes('demanda') || lower.includes('para'))) ||
+    (lower.startsWith('criar') && (lower.includes('tarefa') || lower.includes('demanda') || lower.includes('para'))) ||
+    (lower.startsWith('delegar') && (lower.includes('tarefa') || lower.includes('para')));
+
+  if (isCreateTask) {
     toolsUsed.push('create_task');
-    thoughts.push('[Dedução] Intenção de criação e delegação de tarefa detectada.');
+    thoughts.push('[Dedução] Intenção prioritária de criação e delegação de tarefa detectada.');
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const dueDate = tomorrow.toISOString().split('T')[0];
 
-    const cleanTitle = userMessage
+    // Detecta área de destino mencionada na fala
+    const targetArea = context.areas.find((a) => {
+      const aName = a.name.toLowerCase();
+      return (
+        lower.includes(aName) ||
+        (aName.includes('compras') && (lower.includes('compras') || lower.includes('compra'))) ||
+        (aName.includes('fundição') && (lower.includes('fundicao') || lower.includes('fundição') || lower.includes('produção'))) ||
+        (aName.includes('logística') && (lower.includes('logistica') || lower.includes('logística') || lower.includes('frota'))) ||
+        (aName.includes('financeiro') && (lower.includes('financeiro') || lower.includes('caixa') || lower.includes('contas'))) ||
+        (aName.includes('ti') && (lower.includes('ti') || lower.includes('sistemas') || lower.includes('servidor')))
+      );
+    }) || context.areas[0];
+
+    let cleanTitle = userMessage
       .replace(/valkyra,?\s*/i, '')
-      .replace(/(crie|criar|adicione|adicionar|cadastre|cadastrar|delegar|delegue|agende|agendar)\s+(uma\s+)?(nova\s+)?(tarefa|demanda)?\s*(para|de|sobre)?/i, '')
+      .replace(/(crie|criar|adicione|adicionar|cadastre|cadastrar|delegar|delegue|agende|agendar)\s+(uma\s+)?(nova\s+)?(tarefa|demanda)?\s*(para|de|sobre)?\s*(o|a|os|as)?\s*(para)?/i, '')
       .trim();
 
-    const title = cleanTitle ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Demanda Operacional Reportada';
+    // Se tiver nome da área no início, limpa para deixar o título focado na ação
+    if (targetArea) {
+      cleanTitle = cleanTitle.replace(new RegExp(`^(o\\s+|a\\s+)?(para\\s+)?${targetArea.name}\\s*(eles\\s+precisam|precisa|deve)?\\s*`, 'i'), '');
+    }
+
+    if (!cleanTitle || cleanTitle.length < 3) {
+      cleanTitle = userMessage.replace(/valkyra,?\s*/i, '').trim();
+    }
+
+    const title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
     const priority: TaskPriority = lower.includes('urgente') || lower.includes('critica') || lower.includes('crítica') ? 'HIGH' : 'MEDIUM';
 
-    thoughts.push(`[Execução] Criando tarefa: "${title}" | Prazo: ${dueDate} | Prioridade: ${priority}`);
+    thoughts.push(`[Execução] Criando tarefa no Hub: "${title}" | Área: ${targetArea?.name || 'Geral'} | Prazo: ${dueDate} | Prioridade: ${priority}`);
 
     const createResult = await executeAgentTool(
       'create_task',
       {
         title,
-        description: `Demanda criada via Personal Copilot por ${context.currentUser.name}: "${userMessage}"`,
+        description: `Demanda delegada via Valkyra por ${context.currentUser.name}: "${userMessage}"`,
+        area_id: targetArea?.id || 'area-1',
         due_date: dueDate,
         priority,
       },
@@ -700,7 +623,7 @@ ${
     );
 
     return {
-      text: `📋 **Tarefa criada e delegada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Prazo de Entrega:** ${dueDate}\n• **Prioridade:** ${priority === 'HIGH' ? '🔴 Alta / Urgente' : '🟡 Média'}\n• **Área:** Geral\n\nA demanda já está registrada e visível no seu quadro operacional no **Hub de Demandas**!`,
+      text: `📋 **Tarefa criada e delegada com sucesso no Command Center!**\n\n• **Título:** ${title}\n• **Área Responsável:** ${targetArea?.name || 'Geral'}\n• **Prazo de Entrega:** ${dueDate}\n• **Prioridade:** ${priority === 'HIGH' ? '🔴 Alta / Urgente' : '🟡 Média'}\n\nA demanda já está registrada e visível no seu quadro operacional no **Hub de Demandas**!`,
       thoughtProcess: thoughts.join('\n'),
       toolsUsed,
       actionTaken: createResult.actionTaken,
@@ -708,64 +631,39 @@ ${
     };
   }
 
- // Intenção 4: Marcar Tarefa como Concluída por Comando Direto
- if (
- (lower.includes('conclu') || lower.includes('finaliz') || lower.includes('fech')) &&
- (lower.includes('task-') || lower.includes('tarefa') || lower.includes('primeira') || lower.includes('todas'))
- ) {
- toolsUsed.push('update_task');
- thoughts.push('[Dedução] Comando direto de alteração de status para COMPLETED.');
-
- // Procura código da tarefa na mensagem (ex: task-1, TASK-0001)
- const matchCode = userMessage.match(/task-[\w\d-]+/i);
- const targetTask = matchCode
- ? context.tasks.find((t) => t.id.toLowerCase() === matchCode[0].toLowerCase() || t.code.toLowerCase() === matchCode[0].toLowerCase())
- : context.tasks.find((t) => t.status !== 'COMPLETED') || context.tasks[0];
-
- if (targetTask) {
- thoughts.push(`[Ação] Atualizando status da tarefa [${targetTask.code}] "${targetTask.title}" para COMPLETED.`);
- const updateResult = await executeAgentTool(
- 'update_task',
- {
- taskId: targetTask.id,
- status: 'COMPLETED',
- },
- context
- );
-
- return {
- text: ` **Tarefa [${targetTask.code}] marcada como CONCLUÍDA!**\n\nA demanda **"${targetTask.title}"** foi finalizada no sistema com sucesso.`,
- thoughtProcess: thoughts.join('\n'),
- toolsUsed,
- actionTaken: updateResult.actionTaken,
- engineType: 'local',
- };
- }
- }
-
-  // Intenção 5: Abrir Chamado / Suporte / Incidente Operacional por Voz ou Texto
-  if (
+  // ── PRIORIDADE 2: Abrir Chamado / Suporte / Incidente Operacional ──
+  const isCreateTicket =
     lower.includes('chamado') ||
     lower.includes('suporte') ||
     lower.includes('servidor') ||
     lower.includes('ticket') ||
     lower.includes('abrir chamado') ||
     lower.includes('criar chamado') ||
-    lower.includes('manutenção')
-  ) {
+    lower.includes('incidente') ||
+    (lower.includes('manutenção') && (lower.includes('abrir') || lower.includes('solicitar') || lower.includes('urgente')));
+
+  if (isCreateTicket) {
     toolsUsed.push('create_support_ticket');
     thoughts.push('[Dedução] Comando operacional para abertura de chamado de suporte/incidente.');
 
+    const targetArea = context.areas.find((a) => {
+      const aName = a.name.toLowerCase();
+      return (
+        (lower.includes('ti') || lower.includes('servidor') || lower.includes('sistema')) && aName.includes('ti') ||
+        (lower.includes('manutenção') || lower.includes('prensa') || lower.includes('máquina')) && aName.includes('manutenção')
+      );
+    }) || context.areas.find((a) => a.name.toLowerCase().includes('ti')) || context.areas[0];
+
     let cleanTitle = userMessage
       .replace(/valkyra,?\s*/i, '')
-      .replace(/(abrir|criar|registre|gerar)\s+(um\s+)?chamado\s+(de\s+|para\s+)?/i, '')
+      .replace(/(abrir|criar|registre|gerar|solicitar)\s+(um\s+)?(novo\s+)?chamado\s+(de\s+|para\s+)?/i, '')
       .replace(/(urgente\s+)?(sobre\s+|para\s+)?/i, '')
       .trim();
 
-    if (!cleanTitle) cleanTitle = 'Incidente Operacional Reportado por Voz';
+    if (!cleanTitle || cleanTitle.length < 3) cleanTitle = 'Incidente Operacional Reportado por Voz';
     const titleFormatted = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
-    const priority = lower.includes('urgente') || lower.includes('crítico') || lower.includes('grave') ? 'CRITICAL' : 'HIGH';
-    const category = lower.includes('servidor') || lower.includes('ti') || lower.includes('sistema') ? 'TI_SUPPORTE' : 'MANUTENCAO';
+    const priority: TaskPriority = lower.includes('urgente') || lower.includes('crítico') || lower.includes('critica') || lower.includes('grave') ? 'CRITICAL' : 'HIGH';
+    const category: TicketCategory = lower.includes('servidor') || lower.includes('ti') || lower.includes('sistema') || lower.includes('internet') ? 'TI_SUPPORTE' : 'MANUTENCAO';
 
     const ticketResult = await executeAgentTool(
       'create_support_ticket',
@@ -774,13 +672,13 @@ ${
         description: `Incidente registrado via comando de voz pelo colaborador ${context.currentUser.name}: "${userMessage}"`,
         category,
         priority,
-        area_id: 'area-4',
+        area_id: targetArea?.id || 'area-4',
       },
       context
     );
 
     return {
-      text: `✅ **Chamado Aberto com Sucesso no Command Center!**\n\n• **Título:** ${titleFormatted}\n• **Categoria:** ${category === 'TI_SUPPORTE' ? 'TI & Infraestrutura' : 'Manutenção Industrial'}\n• **Prioridade:** ${priority === 'CRITICAL' ? '🔴 Crítica / Urgente' : '🟠 Alta'}\n• **Status:** ABERTO (Aguardando atendimento)\n\nO chamado foi encaminhado para a fila de atendimento da equipe técnica.`,
+      text: `✅ **Chamado Aberto com Sucesso no Command Center!**\n\n• **Título:** ${titleFormatted}\n• **Categoria:** ${category === 'TI_SUPPORTE' ? 'TI & Infraestrutura' : 'Manutenção Industrial'}\n• **Prioridade:** ${priority === 'CRITICAL' ? '🔴 Crítica / Urgente' : '🟠 Alta'}\n• **Área:** ${targetArea?.name || 'TI & Sistemas'}\n• **Status:** ABERTO (Aguardando atendimento)\n\nO chamado foi encaminhado para a fila de atendimento da equipe técnica e registrado na Central de Chamados!`,
       thoughtProcess: thoughts.join('\n'),
       toolsUsed,
       actionTaken: ticketResult.actionTaken,
@@ -788,7 +686,7 @@ ${
     };
   }
 
-  // Intenção 6: Fechamento Operacional por Voz ou Texto
+  // ── PRIORIDADE 3: Fechamento Operacional por Voz ou Texto ──
   if (
     lower.includes('fechamento') ||
     lower.includes('status da área') ||
@@ -798,16 +696,26 @@ ${
     toolsUsed.push('submit_operational_status');
     thoughts.push('[Dedução] Comando para envio de fechamento operacional diário.');
 
-    const status = lower.includes('crítico') || lower.includes('grave') || lower.includes('parada')
+    const status = lower.includes('crítico') || lower.includes('critico') || lower.includes('grave') || lower.includes('parada')
       ? 'RED'
-      : lower.includes('atenção') || lower.includes('pendência') || lower.includes('alerta')
+      : lower.includes('atenção') || lower.includes('atencao') || lower.includes('pendência') || lower.includes('alerta')
       ? 'YELLOW'
       : 'GREEN';
+
+    const targetArea = context.areas.find((a) => {
+      const aName = a.name.toLowerCase();
+      return (
+        lower.includes(aName) ||
+        (aName.includes('fundição') && (lower.includes('fundicao') || lower.includes('fundição'))) ||
+        (aName.includes('compras') && lower.includes('compras')) ||
+        (aName.includes('logística') && lower.includes('logistica'))
+      );
+    }) || context.areas[0];
 
     const statusResult = await executeAgentTool(
       'submit_operational_status',
       {
-        area_name_or_id: 'Fundição & Produção',
+        area_name_or_id: targetArea?.name || 'Fundição & Produção',
         status,
         justification: `Fechamento reportado via comando operacional: "${userMessage}"`,
       },
@@ -815,7 +723,7 @@ ${
     );
 
     return {
-      text: `📋 **Fechamento Operacional Registrado!**\n\n• **Área:** Fundição & Produção\n• **Status Registrado:** ${status === 'GREEN' ? '🟢 OK' : status === 'YELLOW' ? '🟡 ATENÇÃO' : '🔴 CRÍTICO'}\n• **Horário:** ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\nO status foi atualizado no painel diário e registrado no Command Center.`,
+      text: `📋 **Fechamento Operacional Registrado!**\n\n• **Área:** ${targetArea?.name || 'Fundição & Produção'}\n• **Status Registrado:** ${status === 'GREEN' ? '🟢 OK' : status === 'YELLOW' ? '🟡 ATENÇÃO' : '🔴 CRÍTICO'}\n• **Horário:** ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\nO status foi atualizado no painel diário e registrado no Command Center.`,
       thoughtProcess: thoughts.join('\n'),
       toolsUsed,
       actionTaken: statusResult.actionTaken,
@@ -823,7 +731,42 @@ ${
     };
   }
 
-  // Intenção 7: Telemetria Financeira / Caixa / Finanças
+  // ── PRIORIDADE 4: Marcar Tarefa como Concluída por Comando Direto ──
+  if (
+    (lower.includes('conclu') || lower.includes('finaliz') || lower.includes('fech')) &&
+    (lower.includes('task-') || lower.includes('tarefa') || lower.includes('primeira') || lower.includes('todas')) &&
+    !isCreateTask
+  ) {
+    toolsUsed.push('update_task');
+    thoughts.push('[Dedução] Comando direto de alteração de status para COMPLETED.');
+
+    const matchCode = userMessage.match(/task-[\w\d-]+/i);
+    const targetTask = matchCode
+      ? context.tasks.find((t) => t.id.toLowerCase() === matchCode[0].toLowerCase() || t.code.toLowerCase() === matchCode[0].toLowerCase())
+      : context.tasks.find((t) => t.status !== 'COMPLETED') || context.tasks[0];
+
+    if (targetTask) {
+      thoughts.push(`[Ação] Atualizando status da tarefa [${targetTask.code}] "${targetTask.title}" para COMPLETED.`);
+      const updateResult = await executeAgentTool(
+        'update_task',
+        {
+          taskId: targetTask.id,
+          status: 'COMPLETED',
+        },
+        context
+      );
+
+      return {
+        text: `✅ **Tarefa [${targetTask.code}] marcada como CONCLUÍDA!**\n\nA demanda **"${targetTask.title}"** foi finalizada no sistema com sucesso.`,
+        thoughtProcess: thoughts.join('\n'),
+        toolsUsed,
+        actionTaken: updateResult.actionTaken,
+        engineType: 'local',
+      };
+    }
+  }
+
+  // ── PRIORIDADE 5: Telemetria Financeira / Caixa / Finanças ──
   if (lower.includes('caixa') || lower.includes('finan') || lower.includes('telemetria') || lower.includes('saldo') || lower.includes('receber')) {
     toolsUsed.push('get_financial_telemetry');
     thoughts.push('[Dedução] Consulta de telemetria financeira em tempo real.');
@@ -833,6 +776,100 @@ ${
 
     return {
       text: `📊 **Telemetria Financeira & Posição de Caixa:**\n\n• **Saldo em Caixa / Disponibilidades:** ${fin.cash_balance}\n• **Contas a Receber (Mês):** ${fin.receivables_month}\n• **Contas a Pagar (Mês):** ${fin.payables_month}\n• **Margem Operacional Líquida:** ${fin.net_margin}\n• **Cotação Cobre (LME Cash):** ${fin.lme_copper_cash}\n\n💡 *${fin.summary}*`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      engineType: 'local',
+    };
+  }
+
+  // ── PRIORIDADE 6: Como Concluir / Dúvida sobre finalização de tarefas ──
+  const isHowToComplete =
+    lower.includes('conlui') ||
+    lower.includes('conclui') ||
+    lower.includes('finaliz') ||
+    lower.includes('como posso') ||
+    lower.includes('como faco') ||
+    lower.includes('como fazer') ||
+    lower.includes('como resolver') ||
+    lower.includes('como fechar') ||
+    (contextMentionsTasks && (lower.includes('como') || lower.includes('quais') || lower.includes('fazer')));
+
+  if (isHowToComplete && !lower.includes('crie') && !lower.includes('criar') && !lower.includes('delegar')) {
+    toolsUsed.push('get_my_tasks');
+    thoughts.push('[Dedução] Identificada intenção de orientação sobre como concluir/executar tarefas.');
+
+    const taskResult = await executeAgentTool('get_my_tasks', { filter: 'ALL' }, context);
+    const parsed = JSON.parse(taskResult.content);
+    const pendingTasks = (parsed.tasks || []).filter((t: any) => t.status !== 'COMPLETED');
+
+    let taskExamples = '';
+    if (pendingTasks.length > 0) {
+      taskExamples = pendingTasks
+        .slice(0, 3)
+        .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} · Prazo: ${t.due_date})`)
+        .join('\n');
+    }
+
+    return {
+      text: `Para concluir suas tarefas no **Yggdron Command Center**, você possui **3 maneiras rápidas e práticas**:
+
+### 1. Diretamente Comigo (Copiloto IA)
+Basta me enviar uma mensagem rápida ou comando de voz. Exemplo:
+> *"Conclua a tarefa ${pendingTasks[0]?.code || 'TASK-0001'}"*.
+
+### 2. Pelo Painel de Tarefas
+No módulo de **Tarefas** ou **Hub**:
+1. Localize a demanda na lista;
+2. Clique no ícone de **Checkmark (✔)** para concluir.
+
+### 3. Por Delegação
+Abra os detalhes da tarefa e clique em **Delegar** para transferir a responsabilidade.
+
+${
+  pendingTasks.length > 0
+    ? `\n📌 **Tarefas pendentes sob sua gestão:**\n${taskExamples}\n\nDeseja que eu conclua alguma delas agora? Basta me indicar!`
+    : '\n✨ Você não possui nenhuma tarefa pendente no momento. Todas estão concluídas!'
+}`,
+      thoughtProcess: thoughts.join('\n'),
+      toolsUsed,
+      engineType: 'local',
+    };
+  }
+
+  // ── PRIORIDADE 7: Consulta de Tarefas / O que tenho hoje / Atrasadas / Pendências ──
+  if (
+    lower.includes('hoje') ||
+    lower.includes('minhas tarefas') ||
+    lower.includes('quais tarefas') ||
+    lower.includes('tarefas pendentes') ||
+    lower.includes('atrasad') ||
+    lower.includes('pendent') ||
+    lower.includes('minhas demand')
+  ) {
+    toolsUsed.push('get_my_tasks');
+    const filter = lower.includes('atrasad') ? 'OVERDUE' : lower.includes('hoje') ? 'TODAY' : 'ALL';
+    thoughts.push(`[Dedução] Consulta de tarefas com filtro: ${filter}`);
+
+    const taskResult = await executeAgentTool('get_my_tasks', { filter }, context);
+    const parsed = JSON.parse(taskResult.content);
+
+    if (parsed.count === 0) {
+      return {
+        text: `Olá, **${context.currentUser.name}**. Consultei o Command Center e você **não possui tarefas pendentes** no filtro solicitado (${
+          filter === 'TODAY' ? 'hoje' : filter === 'OVERDUE' ? 'atrasadas' : 'geral'
+        }). Toda a sua operação está em dia!`,
+        thoughtProcess: thoughts.join('\n'),
+        toolsUsed,
+        engineType: 'local',
+      };
+    }
+
+    const taskList = parsed.tasks
+      .map((t: any) => `• **[${t.code}] ${t.title}** (${t.priority} • Prazo: ${t.due_date}) — *Status: ${t.status}*`)
+      .join('\n');
+
+    return {
+      text: `Olá, **${context.currentUser.name}**! Encontrei **${parsed.count} tarefa(s)** sob sua gestão:\n\n${taskList}\n\n💡 **Dica:** Você pode me pedir para concluir qualquer uma delas dizendo: *"Conclua a tarefa ${parsed.tasks[0]?.code}"*!`,
       thoughtProcess: thoughts.join('\n'),
       toolsUsed,
       engineType: 'local',
